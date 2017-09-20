@@ -100,7 +100,8 @@ class LogReg_Classifier:
             self.extract_feature_vec(snt_list, example[0]))
         scores.append(log_norm)
         for tup in example[1:]: 
-            score = self.weights.dot(self.extract_feature_vec(snt_list, tup))
+            tup2 = (tup[0], tup[1], 'EDGE')
+            score = self.weights.dot(self.extract_feature_vec(snt_list, tup2))
             log_norm = self.log_sum(log_norm, score)
             scores.append(score)
 
@@ -113,17 +114,19 @@ class LogReg_Classifier:
                 break
 
         for i, tup in enumerate(example): 
+            tup2 = (tup[0], tup[1], 'EDGE')
             prob = math.exp(scores[i] - log_norm)
-            grad += prob * self.extract_feature_vec(snt_list, tup)
+            grad += prob * self.extract_feature_vec(snt_list, tup2)
 
         return loss, grad
 
     def predict(self, snt_list, example):
         yhat = []
         for tup in example: 
-            x = self.extract_feature_vec(snt_list, tup)
+            tup2 = (tup[0], tup[1], 'EDGE')
+            x = self.extract_feature_vec(snt_list, tup2)
             score = self.weights.dot(x)
-            yhat.append((tup, score))
+            yhat.append((tup2, score))
 
         return sorted(yhat, key=lambda x: x[1], reverse=True)
     
@@ -131,15 +134,14 @@ class LogReg_Classifier:
         vec = Vector({})
 
         p_node, c_node, label = tup
-
         '''
         # p.w, c.w 
         vec.v['p.w=' + p_node.words] = 1.0
-        vec.v['c.w=' + c_node.words] = 1.0
+        #vec.v['c.w=' + c_node.words] = 1.0
 
         # p.l, c.l 
         vec.v['p.l=' + p_node.label] = 1.0
-        vec.v['c.l=' + c_node.label] = 1.0
+        #vec.v['c.l=' + c_node.label] = 1.0
        
         # pair features
         vec.v['p.w+c.w=' + p_node.words + '+' + c_node.words] = 1.0
@@ -158,13 +160,13 @@ class LogReg_Classifier:
 
         vec.v['wd='] = math.fabs(p_node.word_id_start - c_node.word_id_start) \
             if p_node.snt_id == c_node.snt_id else 0
-        '''
 
         # if p_node is the immediate front node of c_node,
         # i.e. node_distance == 1
-        #vec.v['nd=1'] = 1.0 if c_node.index - p_node.index == 1 else 0.0
+        vec.v['nd=1'] = 1.0 if c_node.index - p_node.index == 1 else 0.0
 
-        #vec.v['always_on=1'] = 1.0
+        vec.v['always_on=1'] = 1.0
+        '''
 
         #print('=================vec:', vec)
         return vec 
