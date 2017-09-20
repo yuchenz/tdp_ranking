@@ -31,8 +31,8 @@ class LogReg_Classifier:
             n = 0
             for snt_list, training_example_list in training_data:
                 for example in training_example_list:
-                    yhat_list = self.predict(snt_list, example)
-                    yhat = yhat_list[0][0]
+                    #yhat_list = self.predict(snt_list, example)
+                    #yhat = yhat_list[0][0]
 
                     l, g = self.compute_loss_and_grad(snt_list, example)
                     if (l, g) == (False, False):    # TO DO: check why this happens
@@ -107,6 +107,7 @@ class LogReg_Classifier:
 
         loss += log_norm 
 
+        #import pdb; pdb.set_trace()
         #grad = Vector({})   # TO DO: check why this happends, i.e. no tup in example has edge
         for tup in example:
             if tup[2] != 'NO_EDGE':
@@ -136,7 +137,7 @@ class LogReg_Classifier:
         p_node, c_node, label = tup
         '''
         # p.w, c.w 
-        vec.v['p.w=' + p_node.words] = 1.0
+        #vec.v['p.w=' + p_node.words] = 1.0
         #vec.v['c.w=' + c_node.words] = 1.0
 
         # p.l, c.l 
@@ -144,29 +145,36 @@ class LogReg_Classifier:
         #vec.v['c.l=' + c_node.label] = 1.0
        
         # pair features
-        vec.v['p.w+c.w=' + p_node.words + '+' + c_node.words] = 1.0
-        vec.v['p.w+c.l=' + p_node.words + '+' + c_node.label] = 1.0
-        vec.v['p.l+c.w=' + p_node.label+ '+' + c_node.words] = 1.0
-        vec.v['p.l+c.l=' + p_node.label+ '+' + c_node.label] = 1.0
+        #vec.v['p.w+c.w=' + p_node.words + '+' + c_node.words] = 1.0
+        #vec.v['p.w+c.l=' + p_node.words + '+' + c_node.label] = 1.0
+        #vec.v['p.l+c.w=' + p_node.label+ '+' + c_node.words] = 1.0
+        #vec.v['p.l+c.l=' + p_node.label+ '+' + c_node.label] = 1.0
+        '''
+
+        if p_node.label == 'ROOT' and c_node.label.startswith('Timex-Absolute'):
+            vec.v['p.l_ROOT+c.l_TimexAbsolute=1'] = 1.0
+        else:
+            vec.v['p.l_ROOT+c.l_TimexAbsolute=1'] = 0.0
+
 
         # triple features
-        vec.v['p.w+p.l+c.l=' + p_node.words + '+' + 
-            p_node.label+ '+' + c_node.label] = 1.0
+        #vec.v['p.w+p.l+c.l=' + p_node.words + '+' + 
+        #    p_node.label+ '+' + c_node.label] = 1.0
 
         # distance features: same_snt, word_dist, snt_dist
         vec.v['ss=' + 'True' if p_node.snt_id == c_node.snt_id else 'False'] = 1.0
 
-        vec.v['sd='] = math.fabs(p_node.snt_id - c_node.snt_id)
+        #vec.v['sd='] = math.fabs(p_node.snt_id - c_node.snt_id)
 
-        vec.v['wd='] = math.fabs(p_node.word_id_start - c_node.word_id_start) \
-            if p_node.snt_id == c_node.snt_id else 0
+        #vec.v['wd='] = math.fabs(p_node.word_id_start - c_node.word_id_start) \
+        #    if p_node.snt_id == c_node.snt_id else 0
 
         # if p_node is the immediate front node of c_node,
         # i.e. node_distance == 1
         vec.v['nd=1'] = 1.0 if c_node.index - p_node.index == 1 else 0.0
-
-        vec.v['always_on=1'] = 1.0
-        '''
+        
+        # node_distance
+        #vec.v['nd='] = math.fabs(c_node.index - p_node.index)
 
         #print('=================vec:', vec)
         return vec 

@@ -52,21 +52,20 @@ def make_one_doc_training_data(doc, vocab):
         p_snt, p_start, p_end = parent.split('_') 
         c_node = node_list[i]
 
-        if [p_snt, p_start, p_end] == ['-1', '-1', '-1']:
+        if parent == '-1_-1_-1':
             example.append((root_node, c_node, l_label))
         else:
-            for p_node in node_list:
-                if int(p_snt) - p_node.snt_id > 2:
-                    continue
-                elif p_node.snt_id - int(p_snt) > 2:
-                    break
+            example.append((root_node, c_node, 'NO_EDGE'))
+        for p_node in node_list:
+            if p_node.ID == child:
+                continue
+            elif p_node.snt_id - int(c_snt) > 2:
+                break
+            else:
+                if p_node.ID == parent:
+                    example.append((p_node, c_node, l_label))
                 else:
-                    if p_node.snt_id == int(p_snt) and \
-                            p_node.word_id_start == int(p_start) and \
-                            p_node.word_id_end == int(p_end):
-                        example.append((p_node, c_node, l_label))
-                    else:
-                        example.append((p_node, c_node, 'NO_EDGE'))
+                    example.append((p_node, c_node, 'NO_EDGE'))
 
         training_example_list.append(example)
 
@@ -101,3 +100,66 @@ def make_training_data(train_file):
     vocab.update({'<START>':0, '<STOP>':1, '<UNK>':2})
 
     return training_data, vocab
+
+
+def make_one_doc_test_data(doc):
+    doc = doc.strip().split('\n')
+
+    # create snt_list, edge_list
+    snt_list = []
+    edge_list = []
+    mode = None
+    for line in doc:
+        if line.endswith('LIST'):
+            mode = line.strip().split(':')[-1]
+        elif mode == 'SNT_LIST':
+            snt_list.append(line.strip().split())
+        elif mode == 'EDGE_LIST':
+            edge_list.append(line.strip().split())
+
+    # create node_list
+    node_list = []
+    for i, edge in enumerate(edge_list):
+        child, c_label, parent, l_label = edge
+        c_snt, c_start, c_end = child.split('_')
+        c_node = Node(int(c_snt), int(c_start), int(c_end), i,
+                ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
+            c_label)
+        node_list.append(c_node)
+
+    # create test instance list
+    test_instance_list = []
+    root_node = Node(-1, -1, -1, -1)
+
+    for i, edge in enumerate(edge_list):
+        instance = []
+
+        child, c_label, parent, l_label = edge
+        c_snt, c_start, c_end = child.split('_')
+
+        c_node = node_list[i]
+        instance.append((root_node, c_node, 'EDGE'))
+        
+        for p_node in node_list:
+            if p_node.ID == child:
+                continue
+            if p_node.snt_id - int(c_snt) > 2:
+                break
+            else:
+                instance.append((p_node, c_node, 'EDGE'))
+        
+        test_instance_list.append(instance)
+
+    return [snt_list, test_instance_list]
+
+
+def make_test_data(test_file):
+    data = codecs.open(test_file, 'r', 'utf-8').read()
+    doc_list = data.strip().split('\n\nfilename')
+
+    test_data = []
+    
+    for doc in doc_list:
+        test_data.append(make_one_doc_test_data(doc))
+
+    return test_data

@@ -1,6 +1,6 @@
 import sys
 import codecs
-from data_preparation import make_training_data
+from data_preparation import make_test_data
 from logistic_regression_classifier import LogReg_Classifier
 
 
@@ -12,12 +12,12 @@ def output_parse(edge_list, snt_list, output_file):
 
 def decode(test_data, classifier, output_file):
     i = 0
-    for snt_list, training_example_list in test_data:
+    for snt_list, test_instance_list in test_data:
         print('parsing doc {} ...'.format(i))
         i += 1
         edge_list = []
-        for example in training_example_list:
-            yhat_list = classifier.predict(snt_list, example)
+        for instance in test_instance_list:
+            yhat_list = classifier.predict(snt_list, instance)
             yhat = yhat_list[0][0]
 
             edge = '\t'.join([yhat[1].ID, yhat[1].label, yhat[0].ID, 'link'])
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     vocab_file = sys.argv[3]
     parsed_file = sys.argv[4]
 
-    test_data, vocab = make_training_data(test_file)
+    test_data = make_test_data(test_file)
 
     classifier = LogReg_Classifier.load_model(model_file, vocab_file)
 
