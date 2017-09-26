@@ -48,7 +48,8 @@ def unlabelled_eval(gold_tuples, auto_tuples):
     r = sum([score[1] for score in scores]) / len(scores)
     f = sum([score[2] for score in scores]) / len(scores)
 
-    print('macro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
+    #print('macro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
+    print('macro average: f = {:.3f}'.format(f), end='; ')
 
     # micro average
     true_p = sum([count[0] for count in counts])
@@ -59,7 +60,8 @@ def unlabelled_eval(gold_tuples, auto_tuples):
     r = true_p / (true_p + false_n)
     f = 2 * p * r / (p + r)
 
-    print('micro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
+    #print('micro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
+    print('micro average: f = {:.3f}'.format(f))
 
 
 if __name__ == '__main__':

@@ -22,15 +22,13 @@ then
     mv $data_dir/${data}.train.parsed ~/.recycle
 fi
 
-echo python parse.py $data_dir/${data}.dev models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.dev.parsed
-python parse.py $data_dir/${data}.dev models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.dev.parsed
-echo python parse.py $data_dir/${data}.train models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.train.parsed
-python parse.py $data_dir/${data}.train models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.train.parsed
+echo python parse.py $data_dir/${data}.dev models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.dev.${model}.parsed
+python parse.py $data_dir/${data}.dev models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.dev.${model}.parsed
+echo python parse.py $data_dir/${data}.train models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.train.${model}.parsed
+python parse.py $data_dir/${data}.train models/${data}_train.${model}_model models/${data}_train.vocab $data_dir/${data}.train.${model}.parsed
 
-echo eval on dev data
-echo python eval.py $data_dir/${data}.dev $data_dir/${data}.dev.parsed
-python eval.py $data_dir/${data}.dev $data_dir/${data}.dev.parsed
+echo python eval.py $data_dir/${data}.dev $data_dir/${data}.dev.${model}.parsed
+python eval.py $data_dir/${data}.dev $data_dir/${data}.dev.${model}.parsed
 
-echo eval on training data 
-echo python eval.py $data_dir/${data}.train $data_dir/${data}.train.parsed
-python eval.py $data_dir/${data}.train $data_dir/${data}.train.parsed
+echo python eval.py $data_dir/${data}.train $data_dir/${data}.train.${model}.parsed
+python eval.py $data_dir/${data}.train $data_dir/${data}.train.${model}.parsed
