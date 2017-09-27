@@ -33,13 +33,20 @@ def make_one_doc_training_data(doc, vocab):
 
     # create node_list
     node_list = []
+    snt_node_counter = 0
     for i, edge in enumerate(edge_list):
         child, c_label, parent, l_label = edge
         c_snt, c_start, c_end = child.split('_')
-        c_node = Node(int(c_snt), int(c_start), int(c_end), i,
+
+        if len(node_list) == 0 or c_snt != node_list[-1].snt_id:
+            snt_node_counter = 0
+
+        c_node = Node(int(c_snt), int(c_start), int(c_end), i, snt_node_counter,
             ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
             c_label)
         node_list.append(c_node)
+
+        snt_node_counter += 1
 
     # create training example list 
     training_example_list = []
@@ -119,13 +126,20 @@ def make_one_doc_test_data(doc):
 
     # create node_list
     node_list = []
+    snt_node_counter = 0
     for i, edge in enumerate(edge_list):
         child, c_label, parent, l_label = edge
         c_snt, c_start, c_end = child.split('_')
-        c_node = Node(int(c_snt), int(c_start), int(c_end), i,
+
+        if len(node_list) == 0 or c_snt != node_list[-1].snt_id:
+            snt_node_counter = 0
+
+        c_node = Node(int(c_snt), int(c_start), int(c_end), i, snt_node_counter, 
                 ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
             c_label)
         node_list.append(c_node)
+
+        snt_node_counter += 1
 
     # create test instance list
     test_instance_list = []
