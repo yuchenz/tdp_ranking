@@ -101,8 +101,10 @@ class LogReg_Classifier:
         loss += math.log(norm)
         '''
         scores = []
+        tup = example[0]
+        tup2 = (tup[0], tup[1], 'EDGE')
         log_norm = self.weights.dot(
-            self.extract_feature_vec(snt_list, example[0], example))
+            self.extract_feature_vec(snt_list, tup2, example))
         scores.append(log_norm)
         for tup in example[1:]: 
             tup2 = (tup[0], tup[1], 'EDGE')
@@ -155,7 +157,7 @@ class LogReg_Classifier:
         scores.append(log_norm)
         first = True
         for tup in example: 
-            for edge in "overlap before after includes timex_link".split():
+            for edge in "overlap before after includes timex_link PAST_REF PRESENT_REF FUTURE_REF DCT ATEMPORAL".split():
                 if first:
                     first = False
                 else:
@@ -173,11 +175,17 @@ class LogReg_Classifier:
                 grad = -1 * self.extract_feature_vec(snt_list, tup, example)
                 break
 
-        for i, tup in enumerate(example): 
-            for edge in "overlap before after includes timex_link".split():
+        i = 0
+        total_prob = 0
+        for tup in example: 
+            for edge in "overlap before after includes timex_link PAST_REF PRESENT_REF FUTURE_REF DCT ATEMPORAL".split():
                 tup2 = (tup[0], tup[1], edge)
                 prob = math.exp(scores[i] - log_norm)
                 grad += prob * self.extract_feature_vec(snt_list, tup2, example)
+                i += 1
+                total_prob += prob
+
+        #print('total_prob =', total_prob)
 
         return loss, grad
 
@@ -199,7 +207,7 @@ class LogReg_Classifier:
     def predict_labeled(self, snt_list, example):
         yhat = []
         for tup in example: 
-            for edge in "overlap before after includes timex_link".split():
+            for edge in "overlap before after includes timex_link PAST_REF PRESENT_REF FUTURE_REF DCT ATEMPORAL".split():
                 tup2 = (tup[0], tup[1], edge)
                 x = self.extract_feature_vec(snt_list, tup2, example)
                 score = self.weights.dot(x)
@@ -221,7 +229,7 @@ class LogReg_Classifier:
         #vec.v['c.w=' + c_node.words] = 1.0
 
         # p.l, c.l 
-        vec.v['p.l=' + p_node.label] = 1.0
+        #vec.v['p.l=' + p_node.label] = 1.0
         vec.v['p.l=' + p_node.label + '+e=' + edge] = 1.0
         #vec.v['c.l=' + c_node.label] = 1.0
        
@@ -229,7 +237,7 @@ class LogReg_Classifier:
         #vec.v['p.w+c.w=' + p_node.words + '+' + c_node.words] = 1.0
         #vec.v['p.w+c.l=' + p_node.words + '+' + c_node.label] = 1.0
         #vec.v['p.l+c.w=' + p_node.label+ '+' + c_node.words] = 1.0
-        vec.v['p.l=' + p_node.label + '+c.l=' + c_node.label] = 1.0
+        #vec.v['p.l=' + p_node.label + '+c.l=' + c_node.label] = 1.0
         vec.v['p.l=' + p_node.label + '+c.l=' + c_node.label + '+e=' + edge] = 1.0
 
 
@@ -238,15 +246,15 @@ class LogReg_Classifier:
         #    p_node.label+ '+' + c_node.label] = 1.0
 
         if p_node.snt_id == c_node.snt_id:
-            vec.v['wd'] = math.fabs(p_node.word_id_start - c_node.word_id_start)
+            #vec.v['wd'] = math.fabs(p_node.word_id_start - c_node.word_id_start)
             vec.v['wd+e=' + edge] = math.fabs(p_node.word_id_start - c_node.word_id_start)
 
         # Feat: node_distance
-        vec.v['nd'] = math.fabs(c_node.index - p_node.index)
+        #vec.v['nd'] = math.fabs(c_node.index - p_node.index)
         vec.v['nd+e=' + edge] = math.fabs(c_node.index - p_node.index)
 
         # Feat: bias
-        vec.v['bias'] = 1.0
+        #vec.v['bias'] = 1.0
 
         # Feat: edge bias
         vec.v['e='+edge] = 1.0
@@ -254,59 +262,59 @@ class LogReg_Classifier:
         # Feat: if p_node is the immediate front node of c_node,
         # i.e. node_distance == 1
         if c_node.index - p_node.index == 1:
-            vec.v['nd=1'] = 1.0
+            #vec.v['nd=1'] = 1.0
             vec.v['nd=1+e=' + edge] = 1.0
 
         # Feat: if p_node is root and c_node is an absolute timex
         if p_node.label == 'ROOT' and c_node.label.startswith('Timex-Absolute'):
-            vec.v['p.l=ROOT+c.l=TimexAbsolute'] = 1.0
+            #vec.v['p.l=ROOT+c.l=TimexAbsolute'] = 1.0
             vec.v['p.l=ROOT+c.l=TimexAbsolute+e=' + edge] = 1.0
 
         # Feat: if p_node is root and c_node is a timex
         if p_node.label == 'ROOT' and c_node.label.startswith('Timex'):
-            vec.v['p.l=ROOT+c.l=Timex'] = 1.0
+            #vec.v['p.l=ROOT+c.l=Timex'] = 1.0
             vec.v['p.l=ROOT+c.l=Timex+e=' + edge] = 1.0
 
         # Feat: if c_node is state, c_node.snt_id != p_node.snt_id
         if c_node.label == 'State' and c_node.snt_id != p_node.snt_id:
-            vec.v['c.l=State+pc.nss'] = 1.0
+            #vec.v['c.l=State+pc.nss'] = 1.0
             vec.v['c.l=State+pc.nss+e=' + edge] = 1.0
 
         # Feat: if c_node is state, and p_node.index - c_node.index == 1
         if c_node.label == 'State' and p_node.index - c_node.index == 1:
-            vec.v['c.l=State+nd=-1'] = 1.0
+            #vec.v['c.l=State+nd=-1'] = 1.0
             vec.v['c.l=State+nd=-1+e=' + edge] = 1.0
 
         # Feat: c_node.label and p_node.label (categorized 1)
-        vec.v['p.l1=' + self.label_categorize_1(p_node.label) + '+c.l1=' \
-                + self.label_categorize_1(c_node.label)] = 1.0
+        #vec.v['p.l1=' + self.label_categorize_1(p_node.label) + '+c.l1=' \
+        #        + self.label_categorize_1(c_node.label)] = 1.0
         vec.v['p.l1=' + self.label_categorize_1(p_node.label) + '+c.l1=' \
                 + self.label_categorize_1(c_node.label) + '+e=' + edge] = 1.0
 
-        vec.v['sd'] = math.fabs(p_node.snt_id - c_node.snt_id)
+        #vec.v['sd'] = math.fabs(p_node.snt_id - c_node.snt_id)
         vec.v['sd+e=' + edge] = math.fabs(p_node.snt_id - c_node.snt_id)
 
         # Feat: c_node.label and p_node.label (categorized 2)
-        vec.v['p.l2=' + self.label_categorize_2(p_node.label) + '+c.l2=' \
-                + self.label_categorize_2(c_node.label)] = 1.0
+        #vec.v['p.l2=' + self.label_categorize_2(p_node.label) + '+c.l2=' \
+        #        + self.label_categorize_2(c_node.label)] = 1.0
         vec.v['p.l2=' + self.label_categorize_2(p_node.label) + '+c.l2=' \
                 + self.label_categorize_2(c_node.label) + '+e=' + edge] = 1.0
 
         # Feat: c_node.label and p_node.label (categorized 3)
-        vec.v['p.l3=' + self.label_categorize_3(p_node.label) + '+c.l3=' \
-                + self.label_categorize_3(c_node.label)] = 1.0
+        #vec.v['p.l3=' + self.label_categorize_3(p_node.label) + '+c.l3=' \
+        #        + self.label_categorize_3(c_node.label)] = 1.0
         vec.v['p.l3=' + self.label_categorize_3(p_node.label) + '+c.l3=' \
                 + self.label_categorize_3(c_node.label) + '+e=' + edge] = 1.0
 
         # p_node c_node in same sentence 
         if p_node.snt_id == c_node.snt_id:
-            vec.v['ss=True'] = 1.0 
+            #vec.v['ss=True'] = 1.0 
             vec.v['ss=True+e=' + edge] = 1.0 
 
         # Feat: p_node in quotation marks and c_node in quotation marks
-        vec.v['p.q=' + \
-            self.in_quotation_marks(snt_list[p_node.snt_id], p_node) + '+c.q='\
-            + self.in_quotation_marks(snt_list[c_node.snt_id], c_node)] = 1.0
+        #vec.v['p.q=' + \
+        #    self.in_quotation_marks(snt_list[p_node.snt_id], p_node) + '+c.q='\
+        #    + self.in_quotation_marks(snt_list[c_node.snt_id], c_node)] = 1.0
         vec.v['p.q=' + \
             self.in_quotation_marks(snt_list[p_node.snt_id], p_node) + '+c.q='\
             + self.in_quotation_marks(snt_list[c_node.snt_id], c_node) + \
@@ -317,19 +325,19 @@ class LogReg_Classifier:
         if self.is_stative(c_node.label) and p_node.index - c_node.index == 1 \
                 and self.is_eventive(p_node.label) and \
                 c_node.index_in_snt == 0 and c_node.snt_id != 0:
-            vec.v['f11=True'] = 1.0
+            #vec.v['f11=True'] = 1.0
             vec.v['f11=True+e=' + edge] = 1.0
 
         # Feat: p and c are events, and nodes between p and c are all states
         if p_node.label == 'Event' and c_node.label == 'Event' and \
                 self.all_states(p_node.index, c_node.index, example):
-            vec.v['p.l=Event+c.l=Event+all_states_between'] = 1.0
+            #vec.v['p.l=Event+c.l=Event+all_states_between'] = 1.0
             vec.v['p.l=Event+c.l=Event+all_states_between+e=' + edge] = 1.0
 
         # Feat: if p_node is the immediate front node of c_node, and both are events
         if p_node.label == 'Event' and c_node.label == 'Event' and \
                 c_node.index - p_node.index == 1:
-            vec.v['p.l=Event+c.l=Event+nd=1'] = 1.0
+            #vec.v['p.l=Event+c.l=Event+nd=1'] = 1.0
             vec.v['p.l=Event+c.l=Event+nd=1+e=' + edge] = 1.0
 
         #print('=================vec:', vec)

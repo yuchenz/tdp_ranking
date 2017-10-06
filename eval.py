@@ -68,7 +68,7 @@ def labeled_eval(gold_tuples, auto_tuples):
 
     for i, (gtups, atups) in enumerate(zip(gold_tuples, auto_tuples)):
         gtups = set([(gtup[0], gtup[1], gtup[2]) for gtup in gtups])
-        atups = set([(atup[0], atup[1], gtup[2]) for atup in atups])
+        atups = set([(atup[0], atup[1], atup[2]) for atup in atups])
 
         true_positive = len(gtups.intersection(atups))
         false_positive = len(atups.difference(gtups))

@@ -3,6 +3,7 @@ import os
 import codecs
 from data_preparation import make_test_data
 from logistic_regression_classifier import LogReg_Classifier
+from baseline_classifier import Baseline_Classifier
 
 
 def output_parse(edge_list, snt_list, output_file):
@@ -38,7 +39,8 @@ if __name__ == '__main__':
     model_file = sys.argv[2]
     vocab_file = sys.argv[3]
     parsed_file = sys.argv[4]
-    labeled = True if sys.argv[5] == 'labeled' else False
+    clas = sys.argv[5]
+    labeled = True if sys.argv[6] == 'labeled' else False
 
     try:
         os.remove(parsed_file)
@@ -47,6 +49,10 @@ if __name__ == '__main__':
 
     test_data = make_test_data(test_file)
 
-    classifier = LogReg_Classifier.load_model(model_file, vocab_file)
+    if clas == 'baseline':
+        default_label = sys.argv[7]
+        classifier = Baseline_Classifier(default_label)
+    else:
+        classifier = LogReg_Classifier.load_model(model_file, vocab_file)
 
     decode(test_data, classifier, parsed_file, labeled)
