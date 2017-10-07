@@ -3,6 +3,17 @@ import pdb
 from data_structures import Node
 
 
+def get_word_index_in_doc(snt_list, snt_id, word_id):
+    index = 0
+    for i, snt in enumerate(snt_list):
+        if i < snt_id:
+            index += len(snt)
+        else:
+            break
+
+    return index + word_id
+
+
 def make_one_doc_training_data(doc, vocab):
     """
     return: trainining_example_list
@@ -42,6 +53,7 @@ def make_one_doc_training_data(doc, vocab):
             snt_node_counter = 0
 
         c_node = Node(int(c_snt), int(c_start), int(c_end), i, snt_node_counter,
+            get_word_index_in_doc(snt_list, int(c_snt), int(c_start)),
             ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
             c_label)
         node_list.append(c_node)
@@ -50,7 +62,7 @@ def make_one_doc_training_data(doc, vocab):
 
     # create training example list 
     training_example_list = []
-    root_node = Node(-1, -1, -1, -1)
+    root_node = Node()
 
     for i, edge in enumerate(edge_list):
         example = []
@@ -135,7 +147,8 @@ def make_one_doc_test_data(doc):
             snt_node_counter = 0
 
         c_node = Node(int(c_snt), int(c_start), int(c_end), i, snt_node_counter, 
-                ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
+            get_word_index_in_doc(snt_list, int(c_snt), int(c_start)),
+            ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
             c_label)
         node_list.append(c_node)
 
@@ -143,7 +156,7 @@ def make_one_doc_test_data(doc):
 
     # create test instance list
     test_instance_list = []
-    root_node = Node(-1, -1, -1, -1)
+    root_node = Node()
 
     for i, edge in enumerate(edge_list):
         instance = []

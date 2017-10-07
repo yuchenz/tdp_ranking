@@ -3,13 +3,14 @@ import copy
 
 class Node:
     def __init__(self, snt_id=-1, word_id_start=-1, word_id_end=-1, index=-1,
-            index_in_snt=-1, words='root', label='ROOT'):
+            index_in_snt=-1, word_index_in_doc=-1, words='root', label='ROOT'):
         self.snt_id = snt_id
         self.word_id_start = word_id_start
         self.word_id_end = word_id_end
         self.ID = '_'.join([str(snt_id), str(word_id_start), str(word_id_end)])
         self.index = index
         self.index_in_snt = index_in_snt
+        self.word_index_in_doc = word_index_in_doc
         self.words = words
         self.label = label
         self.parent = None

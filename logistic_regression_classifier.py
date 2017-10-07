@@ -23,6 +23,9 @@ class LogReg_Classifier:
 
         return classifier
 
+    def train(self, training_data, output_file, vocab_file, labeled, num_iter=1000):
+        self.batch_train(training_data, output_file, vocab_file, labeled, number_iter)
+
     def batch_train(self, training_data, output_file, vocab_file, labeled, num_iter=1000):
         sum_sq = Vector({})
         for i in range(num_iter):
