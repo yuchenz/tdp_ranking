@@ -1,32 +1,20 @@
+test_file=$1
+default_label=$2
 
-data_dir=../all_annotated_data
-
-data=$1
-model=baseline
-labeled=$2
-default_label=$3
-
-echo $data $model 
-
-if [ -f $data_dir/${data}.dev.${model}.parsed ]; 
+if [ -f ${test_file}.baseline-parsed-ul ]; 
 then
-    echo mv $data_dir/${data}.dev.${model}.parsed ~/.recycle
-    mv $data_dir/${data}.dev.${model}.parsed ~/.recycle
+    mv ${test_file}.baseline-parsed-ul ~/.recycle
 fi
 
-if [ -f $data_dir/${data}.train.${model}.parsed ]; 
+echo unlabeled ...
+python parse.py --test_file $test_file --classifier baseline --parsed_file ${test_file}.baseline-parsed-ul --default_label $default_label
+python eval.py --gold_file $test_file --parsed_file ${test_file}.baseline-parsed-ul
+
+if [ -f ${test_file}.baseline-parsed-l ]; 
 then
-    echo mv $data_dir/${data}.train.${model}.parsed ~/.recycle
-    mv $data_dir/${data}.train.${model}.parsed ~/.recycle
+    mv ${test_file}.baseline-parsed-l ~/.recycle
 fi
 
-echo python parse.py $data_dir/${data}.dev baseline baseline $data_dir/${data}.dev.${model}.parsed baseline $labeled $default_label
-python parse.py $data_dir/${data}.dev baseline baseline $data_dir/${data}.dev.${model}.parsed baseline $labeled $default_label
-echo python parse.py $data_dir/${data}.train baseline baseline $data_dir/${data}.train.${model}.parsed baseline $labeled $default_label
-python parse.py $data_dir/${data}.train baseline baseline $data_dir/${data}.train.${model}.parsed baseline $labeled $default_label
-
-echo python eval.py $data_dir/${data}.dev $data_dir/${data}.dev.${model}.parsed $labeled
-python eval.py $data_dir/${data}.dev $data_dir/${data}.dev.${model}.parsed $labeled
-
-echo python eval.py $data_dir/${data}.train $data_dir/${data}.train.${model}.parsed $labeled
-python eval.py $data_dir/${data}.train $data_dir/${data}.train.${model}.parsed $labeled
+echo labeled ...
+python parse.py --test_file $test_file --classifier baseline --parsed_file ${test_file}.baseline-parsed-l --default_label $default_label --labeled
+python eval.py --gold_file $test_file --parsed_file ${test_file}.baseline-parsed-l --labeled 

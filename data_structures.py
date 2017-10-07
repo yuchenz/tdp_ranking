@@ -43,3 +43,18 @@ LABEL_VOCAB = {
     '<STOP>': 11,
     '<UNK>': 12,
 }
+
+
+EDGE_LABEL_LIST = [
+    'ROOT',
+    'DCT',
+    'PRESENT_REF',
+    'PAST_REF',
+    'FUTURE_REF',
+    'ATEMPORAL',
+    'before',
+    'after',
+    'overlap',
+    'includes',
+    'Depend-on',
+]

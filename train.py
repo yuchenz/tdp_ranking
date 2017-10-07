@@ -11,7 +11,7 @@ def get_arg_parser():
     arg_parser.add_argument("--model_file", help="where to store the model")
     arg_parser.add_argument("--iter", help="number of interations", type=int)
     arg_parser.add_argument("--labeled", help="train a model to predict labels", 
-        action="store_true", default=True)
+        action="store_true", default=False)
     arg_parser.add_argument("--classifier", help="which classifier to use",
         choices=["log_reg", "bi_lstm"])
     arg_parser.add_argument("--size_embed", help="word embedding size for bi-lstm model",

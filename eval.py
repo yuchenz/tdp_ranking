@@ -1,6 +1,16 @@
 import codecs
 import sys
+import argparse
 
+
+def get_arg_parser():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--gold_file", help="gold file")
+    arg_parser.add_argument("--parsed_file", help="parsed file")
+    arg_parser.add_argument("--labeled", help="evaluate with edge labels",
+        action="store_true", default=False)
+
+    return arg_parser
 
 def readin_tuples(filename):
     lines = codecs.open(filename, 'r', 'utf-8').readlines()
@@ -105,14 +115,13 @@ def labeled_eval(gold_tuples, auto_tuples):
 
 
 if __name__ == '__main__':
-    gold_file = sys.argv[1]
-    auto_file = sys.argv[2]
-    labeled = True if sys.argv[3] == 'labeled' else False
+    arg_parser = get_arg_parser()
+    args = arg_parser.parse_args()
 
-    gold_tuples = readin_tuples(gold_file)
-    auto_tuples = readin_tuples(auto_file)
+    gold_tuples = readin_tuples(args.gold_file)
+    auto_tuples = readin_tuples(args.parsed_file)
 
-    if labeled:
+    if args.labeled:
         labeled_eval(gold_tuples, auto_tuples)
     else:
         unlabeled_eval(gold_tuples, auto_tuples)

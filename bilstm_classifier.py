@@ -2,33 +2,42 @@ import codecs
 import random
 import json
 import os
-from vector import Vector
 import math
+import operator
 import dynet as dy
+from vector import Vector
+from data_structures import EDGE_LABEL_LIST
 
 
 class Bilstm_Classifier:
     """Bilstm Classifier. """
 
-    def __init__(self, vocab, size_embed, size_lstm, size_hidden, size_edge_label):
+    def __init__(self, vocab, size_embed, size_lstm, size_hidden,
+            size_edge_label=len(EDGE_LABEL_LIST)):
         self.model = dy.Model()
+        self.size_edge_label = size_edge_label
 
-        self.embeddings = self.model.add_lookup_parameters(
-                (len(vocab), size_embed))
+        if vocab != 0:
+            self.embeddings = self.model.add_lookup_parameters(
+                    (len(vocab), size_embed))
 
-        self.lstm_fwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
-        self.lstm_bwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
+            self.lstm_fwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
+            self.lstm_bwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
 
-        self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm))
-        self.pb1 = self.model.add_parameters(size_hidden)
-        self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
-        self.pb2 = self.model.add_parameters(size_edge_label)
+            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm))
+            self.pb1 = self.model.add_parameters(size_hidden)
+            self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
+            self.pb2 = self.model.add_parameters(size_edge_label)
 
-        self.vocab = vocab
+            self.vocab = vocab
+        else:
+            self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2, \
+                self.lstm_fwd, self.lstm_bwd, self.vocab = None, None, None, \
+                None, None, None, None, None
 
     @classmethod
     def load_model(cls, model_file, vocab_file):
-        classifier = cls(0, 0, 0, 0, 0)
+        classifier = cls(0, 0, 0, 0)
         classifier.embeddings, classifier.pW1, classifier.pb1, classifier.pW2, \
             classifier.pb2, classifier.lstm_fwd, classifier.lstm_bwd = \
             classifier.model.load(model_file)
@@ -52,30 +61,33 @@ class Bilstm_Classifier:
             self.vocab.get(word, self.vocab['<UNK>'])
             ) for word in word_list]
 
+    def build_cg(self, snt_list):
+        dy.renew_cg()
+
+        f_init = self.lstm_fwd.initial_state()
+        b_init = self.lstm_bwd.initial_state()
+
+        word_embeddings = self.get_word_embeddings_for_document(snt_list)
+
+        f_exps = f_init.transduce(word_embeddings)
+        b_exps = b_init.transduce(reversed(word_embeddings))
+
+        self.bi_lstm = [dy.concatenate([f, b]) for f, b in 
+            zip(f_exps, reversed(b_exps))]
+
+        self.W1 = dy.parameter(self.pW1)
+        self.b1 = dy.parameter(self.pb1)
+        self.W2 = dy.parameter(self.pW2)
+        self.b2 = dy.parameter(self.pb2)
+
     def online_train(self, training_data, output_file, vocab_file, num_iter=1000):
         trainer = dy.AdamTrainer(self.model)
 
         for i in range(num_iter):
-            random.shuffle(training_data)
+            #random.shuffle(training_data)
             closs = 0.0
             for snt_list, training_example_list in training_data:
-                dy.renew_cg()
-
-                f_init = self.lstm_fwd.initial_state()
-                b_init = self.lstm_bwd.initial_state()
-
-                word_embeddings = self.get_word_embeddings_for_document(snt_list)
-
-                f_exps = f_init.transduce(word_embeddings)
-                b_exps = b_init.transduce(reversed(word_embeddings))
-
-                self.bi_lstm = [dy.concatenate([f, b]) for f, b in 
-                    zip(f_exps, reversed(b_exps))]
-
-                self.W1 = dy.parameter(self.pW1)
-                self.b1 = dy.parameter(self.pb1)
-                self.W2 = dy.parameter(self.pW2)
-                self.b2 = dy.parameter(self.pb2)
+                self.build_cg(snt_list)
 
                 for example in training_example_list:
                     yhat = self.scores(example)
@@ -93,9 +105,9 @@ class Bilstm_Classifier:
             [self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2,
                 self.lstm_fwd, self.lstm_bwd])
 
-        if not os.path.isfile(vocab_file):
-            with codecs.open(vocab_file, 'w', 'utf-8') as f:
-                json.dump(self.vocab, f)
+        #if not os.path.isfile(vocab_file):
+        with codecs.open(vocab_file, 'w', 'utf-8') as f:
+            json.dump(self.vocab, f)
 
     def scores(self, example):
         out_list = []
@@ -109,22 +121,58 @@ class Bilstm_Classifier:
             out_list.append(scores)
 
         yhat = dy.concatenate(out_list)
+
+        # for debug
+        #print('unnormalized predicted y vector len:', len(yhat.value()))
+        guess = sorted(enumerate(yhat.npvalue()),
+            key=operator.itemgetter(1), reverse=True)[0][0]
+        guess = self.yhat_index_to_yhat(guess, example)
+        print('predicted:\t', guess[0], '\t', guess[1], '\t', guess[2])
+        # end debug
+
         return yhat
 
     def get_gold_y_index(self, example):
         out_list = []
         for tup in example:
             p, c, label = tup
-            if label != 'NO_EDGE':
-                out_list.append(1)
-            else:
-                out_list.append(0)
+            for l in EDGE_LABEL_LIST:
+                if l == label:
+                    out_list.append(1)
+                else:
+                    out_list.append(0)
 
-        if 1 not in out_list:   # TO DO: investigate, why are there cases with no gold y??
-            out_list[0] = 1
+        # for debug
+        #print('gold y vector:', out_list)
+        #print('gold y vector len:', len(out_list))
+        yhat = self.yhat_index_to_yhat(out_list.index(1), example)
+        print('gold answer:\t', yhat[0], '\t', yhat[1], '\t', yhat[2])
+        # end debug
 
         return out_list.index(1) 
 
-
     def compute_loss(self, yhat, gold_y_index):
         return -dy.log(dy.pick(dy.softmax(yhat), gold_y_index))
+
+    def yhat_index_to_yhat(self, yhat_index, example):
+        example_index = int(yhat_index / self.size_edge_label)
+        label_index = yhat_index % self.size_edge_label
+
+        label = EDGE_LABEL_LIST[label_index]
+        tup = example[example_index]
+        yhat = (tup[0], tup[1], label)
+
+        return yhat
+
+    def predict(self, snt_list, example, labeled):
+        self.build_cg(snt_list)
+        yhat_list = sorted(enumerate(self.scores(example).npvalue()),
+            key=operator.itemgetter(1), reverse=True)
+
+        yhat = self.yhat_index_to_yhat(yhat_list[0][0], example)
+
+        # for debug
+        #print('predicted:\t', yhat[0], '\t', yhat[1], '\t', yhat[2])
+        # end debug
+
+        return [(yhat, 0)]

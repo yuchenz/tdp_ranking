@@ -34,9 +34,6 @@ class LogReg_Classifier:
             n = 0
             for snt_list, training_example_list in training_data:
                 for example in training_example_list:
-                    #yhat_list = self.predict(snt_list, example)
-                    #yhat = yhat_list[0][0]
-
                     if labeled:
                         l, g = self.compute_loss_and_grad_labeled(snt_list, example)
                     else:
@@ -192,20 +189,23 @@ class LogReg_Classifier:
 
         return loss, grad
 
-    def predict(self, snt_list, example):
-        yhat = []
-        for tup in example: 
-            tup2 = (tup[0], tup[1], 'EDGE')
-            x = self.extract_feature_vec(snt_list, tup2, example)
-            score = self.weights.dot(x)
-            yhat.append((tup2, score))
+    def predict(self, snt_list, example, labeled):
+        if labeled:
+            return self.predict_labeled(snt_list, example)
+        else:
+            yhat = []
+            for tup in example: 
+                tup2 = (tup[0], tup[1], 'EDGE')
+                x = self.extract_feature_vec(snt_list, tup2, example)
+                score = self.weights.dot(x)
+                yhat.append((tup2, score))
 
-            #print(tup[0])
-            #print(tup[1])
-            #print(x)
-            #print(score)
+                #print(tup[0])
+                #print(tup[1])
+                #print(x)
+                #print(score)
 
-        return sorted(yhat, key=lambda x: x[1], reverse=True)
+            return sorted(yhat, key=lambda x: x[1], reverse=True)
     
     def predict_labeled(self, snt_list, example):
         yhat = []

@@ -1,10 +1,37 @@
 import sys
 import os
 import codecs
+import argparse
 from data_preparation import make_test_data
 from logistic_regression_classifier import LogReg_Classifier
 from baseline_classifier import Baseline_Classifier
+from bilstm_classifier import Bilstm_Classifier
 
+
+def get_arg_parser():
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--test_file", help="test data to be parsed")
+    arg_parser.add_argument("--model_file", help="the model to use")
+    arg_parser.add_argument("--vocab_file", help="the vocab file to use")
+    arg_parser.add_argument("--parsed_file", help="where to output the parsed results")
+    arg_parser.add_argument("--classifier", help="which classifier to use",
+        choices=["log_reg", "bi_lstm", "baseline"])
+    arg_parser.add_argument("--labeled", help="parse with edge labels",
+        action="store_true", default=False)
+    arg_parser.add_argument("--default_label",
+        help="default edge label to use for baseline parser",
+        choices=["before", "overlap"])
+    arg_parser.add_argument("--size_embed", help="word embedding size for bi-lstm model",
+        default=128)
+    arg_parser.add_argument("--size_lstm", help="single lstm vector size for bi-lstm model",
+        default=64)
+    arg_parser.add_argument("--size_hidden",
+        help="feed-forward neural network's hidden layer size for bi-lstm model",
+        default=64)
+    arg_parser.add_argument("--size_edge_label",
+        help="number of all possible edge labels", default=11)
+
+    return arg_parser
 
 def output_parse(edge_list, snt_list, output_file):
     with codecs.open(output_file, 'a', 'utf-8') as f:
@@ -19,10 +46,7 @@ def decode(test_data, classifier, output_file, labeled):
         i += 1
         edge_list = []
         for instance in test_instance_list:
-            if labeled:
-                yhat_list = classifier.predict_labeled(snt_list, instance)
-            else:
-                yhat_list = classifier.predict(snt_list, instance)
+            yhat_list = classifier.predict(snt_list, instance, labeled)
 
             yhat = yhat_list[0][0]
             #print([[y[0][0].ID, y[0][1].ID, y[1]] for y in yhat_list])
@@ -35,24 +59,22 @@ def decode(test_data, classifier, output_file, labeled):
 
 
 if __name__ == '__main__':
-    test_file = sys.argv[1]
-    model_file = sys.argv[2]
-    vocab_file = sys.argv[3]
-    parsed_file = sys.argv[4]
-    clas = sys.argv[5]
-    labeled = True if sys.argv[6] == 'labeled' else False
+    arg_parser = get_arg_parser()
+    args = arg_parser.parse_args()
 
     try:
-        os.remove(parsed_file)
+        os.remove(args.parsed_file)
     except OSError:
         pass
 
-    test_data = make_test_data(test_file)
+    test_data = make_test_data(args.test_file)
 
-    if clas == 'baseline':
-        default_label = sys.argv[7]
-        classifier = Baseline_Classifier(default_label)
-    else:
-        classifier = LogReg_Classifier.load_model(model_file, vocab_file)
+    if args.classifier == 'baseline':
+        default_label = args.default_label 
+        classifier = Baseline_Classifier(args.default_label)
+    elif args.classifier == 'log_reg':
+        classifier = LogReg_Classifier.load_model(args.model_file, args.vocab_file)
+    elif args.classifier == 'bi_lstm':
+        classifier = Bilstm_Classifier.load_model(args.model_file, args.vocab_file)
 
-    decode(test_data, classifier, parsed_file, labeled)
+    decode(test_data, classifier, args.parsed_file, args.labeled)

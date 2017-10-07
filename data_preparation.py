@@ -14,6 +14,14 @@ def get_word_index_in_doc(snt_list, snt_id, word_id):
     return index + word_id
 
 
+def check_example_contains_1(example):
+    for tup in example:
+        if tup[2] != 'NO_EDGE':
+            return True
+
+    return False
+
+
 def make_one_doc_training_data(doc, vocab):
     """
     return: trainining_example_list
@@ -69,12 +77,14 @@ def make_one_doc_training_data(doc, vocab):
 
         child, c_label, parent, l_label = edge
         p_snt, p_start, p_end = parent.split('_') 
+        c_snt, c_start, c_end = child.split('_')
         c_node = node_list[i]
 
         if parent == '-1_-1_-1':
             example.append((root_node, c_node, l_label))
         else:
             example.append((root_node, c_node, 'NO_EDGE'))
+        #pdb.set_trace()
         for p_node in node_list:
             if p_node.ID == child:
                 continue
@@ -85,6 +95,10 @@ def make_one_doc_training_data(doc, vocab):
                     example.append((p_node, c_node, l_label))
                 else:
                     example.append((p_node, c_node, 'NO_EDGE'))
+
+        if not check_example_contains_1(example):
+            print('ERROR! no gold parent in this example!!!')
+            exit(1)
 
         training_example_list.append(example)
 
