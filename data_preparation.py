@@ -98,6 +98,7 @@ def make_one_doc_training_data(doc, vocab):
 
         if not check_example_contains_1(example):
             print('ERROR! no gold parent in this example!!!')
+            #pdb.set_trace()
             exit(1)
 
         training_example_list.append(example)

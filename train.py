@@ -33,7 +33,7 @@ if __name__ == '__main__':
     training_data, vocab = make_training_data(args.train_file)
 
     vocab_file = 'models/' + \
-        '_'.join(args.train_file.split('/')[-1].split('.')) + '.vocab'
+        '.'.join(args.train_file.split('/')[-1].split('.')) + '.vocab'
 
     if args.classifier == 'log_reg':
         classifier = LogReg_Classifier(vocab)

@@ -12,7 +12,6 @@ echo $data $model
 echo python -u train.py --train_file $data_dir/${data}.train --model_file models/${data}_train.${model}_model --iter $iter --classifier $classifier $labeled
 python -u train.py --train_file $data_dir/${data}.train --model_file models/${data}_train.${model}_model --iter $iter --classifier $classifier $labeled
 
-: <<'END'
 if [ -f $data_dir/${data}.dev.parsed ]; 
 then
     echo mv $data_dir/${data}.dev.parsed ~/.recycle
@@ -35,4 +34,3 @@ python eval.py $data_dir/${data}.dev $data_dir/${data}.dev.${model}.parsed $labe
 
 echo python eval.py $data_dir/${data}.train $data_dir/${data}.train.${model}.parsed $labeled
 python eval.py $data_dir/${data}.train $data_dir/${data}.train.${model}.parsed $labeled
-END
