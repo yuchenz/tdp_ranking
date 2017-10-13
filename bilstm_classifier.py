@@ -105,7 +105,6 @@ class Bilstm_Classifier:
             [self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2,
                 self.lstm_fwd, self.lstm_bwd])
 
-        #if not os.path.isfile(vocab_file):
         with codecs.open(vocab_file, 'w', 'utf-8') as f:
             json.dump(self.vocab, f)
 
@@ -124,10 +123,10 @@ class Bilstm_Classifier:
 
         # for debug
         #print('unnormalized predicted y vector len:', len(yhat.value()))
-        guess = sorted(enumerate(yhat.npvalue()),
-            key=operator.itemgetter(1), reverse=True)[0][0]
-        guess = self.yhat_index_to_yhat(guess, example)
-        print('predicted:\t', guess[0], '\t', guess[1], '\t', guess[2])
+        #guess = sorted(enumerate(yhat.npvalue()),
+        #    key=operator.itemgetter(1), reverse=True)[0][0]
+        #guess = self.yhat_index_to_yhat(guess, example)
+        #print('predicted:\t', guess[0], '\t', guess[1], '\t', guess[2])
         # end debug
 
         return yhat
@@ -145,8 +144,8 @@ class Bilstm_Classifier:
         # for debug
         #print('gold y vector:', out_list)
         #print('gold y vector len:', len(out_list))
-        yhat = self.yhat_index_to_yhat(out_list.index(1), example)
-        print('gold answer:\t', yhat[0], '\t', yhat[1], '\t', yhat[2])
+        #yhat = self.yhat_index_to_yhat(out_list.index(1), example)
+        #print('gold answer:\t', yhat[0], '\t', yhat[1], '\t', yhat[2])
         # end debug
 
         return out_list.index(1) 
