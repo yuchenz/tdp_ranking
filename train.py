@@ -8,6 +8,7 @@ from bilstm_classifier import Bilstm_Classifier
 def get_arg_parser():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--train_file", help="training data")
+    arg_parser.add_argument("--dev_file", help="dev data")
     arg_parser.add_argument("--model_file", help="where to store the model")
     arg_parser.add_argument("--iter", help="number of interations", type=int)
     arg_parser.add_argument("--labeled", help="train a model to predict labels", 
@@ -31,6 +32,7 @@ if __name__ == '__main__':
     args = arg_parser.parse_args()
 
     training_data, vocab = make_training_data(args.train_file)
+    dev_data, _ = make_training_data(args.dev_file)
 
     vocab_file = args.model_file + '.vocab'
 
@@ -40,4 +42,4 @@ if __name__ == '__main__':
         classifier = Bilstm_Classifier(vocab, args.size_embed, args.size_lstm,
             args.size_hidden, args.size_edge_label)
 
-    classifier.train(training_data, args.model_file, vocab_file, args.labeled, args.iter)
+    classifier.train(training_data, dev_data, args.model_file, vocab_file, args.labeled, args.iter)

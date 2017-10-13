@@ -2,6 +2,7 @@ import codecs
 import random
 import json
 import os
+import sys
 import math
 import operator
 import dynet as dy
@@ -47,8 +48,8 @@ class Bilstm_Classifier:
 
         return classifier
 
-    def train(self, training_data, output_file, vocab_file, labeled, num_iter=1000):
-        self.online_train(training_data, output_file, vocab_file, num_iter)
+    def train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
+        self.online_train(training_data, dev_data, output_file, vocab_file, num_iter)
 
     def get_word_embeddings_for_document(self, snt_list):
         word_list = []
@@ -80,9 +81,12 @@ class Bilstm_Classifier:
         self.W2 = dy.parameter(self.pW2)
         self.b2 = dy.parameter(self.pb2)
 
-    def online_train(self, training_data, output_file, vocab_file, num_iter=1000):
+    def online_train(self, training_data, dev_data, output_file, vocab_file, num_iter=1000):
         trainer = dy.AdamTrainer(self.model)
 
+        dev_loss_inc_count = 0
+        pre_dev_loss = 0
+        min_dev_loss = sys.maxsize
         for i in range(num_iter):
             #random.shuffle(training_data)
             closs = 0.0
@@ -96,14 +100,34 @@ class Bilstm_Classifier:
                     loss.backward()
                     trainer.update()
 
-            if 1:
-                print('# iter', i)
-                print('loss =', closs)
+            # compute dev loss for early stopping
+            dev_loss = 0.0
+            for snt_list, dev_example_list in dev_data:
+                self.build_cg(snt_list)
+                for example in dev_example_list:
+                    yhat = self.scores(example)
+                    loss = self.compute_loss(yhat, self.get_gold_y_index(example))
+                    dev_loss += loss.scalar_value()
 
-        self.model.save(
-            output_file,
-            [self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2,
-                self.lstm_fwd, self.lstm_bwd])
+            print('# iter', i, end=':')
+            print('loss on training = {}, loss on dev = {}'.format(closs, dev_loss))
+
+            # early stopping
+            if dev_loss > pre_dev_loss:
+                dev_loss_inc_count += 1
+            else:
+                dev_loss_inc_count = 0
+            # if 3 consecutive iters have increasing dev loss, then break
+            if dev_loss_inc_count > 4:  
+                break
+            else:
+                pre_dev_loss = dev_loss
+
+            if dev_loss < min_dev_loss:
+                self.model.save(
+                    output_file,
+                    [self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2,
+                        self.lstm_fwd, self.lstm_bwd])
 
         with codecs.open(vocab_file, 'w', 'utf-8') as f:
             json.dump(self.vocab, f)
