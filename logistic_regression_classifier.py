@@ -1,4 +1,5 @@
 import codecs
+import sys
 import json
 import os
 from vector import Vector
@@ -23,14 +24,18 @@ class LogReg_Classifier:
 
         return classifier
 
-    def train(self, training_data, output_file, vocab_file, labeled, num_iter=1000):
-        self.batch_train(training_data, output_file, vocab_file, labeled, number_iter)
+    def train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
+        self.batch_train(training_data, dev_data, output_file, vocab_file, labeled, num_iter)
 
-    def batch_train(self, training_data, output_file, vocab_file, labeled, num_iter=1000):
+    def batch_train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
         sum_sq = Vector({})
+
+        dev_loss_inc_count = 0
+        pre_dev_loss = 0
+        min_dev_loss = sys.maxsize
         for i in range(num_iter):
             grad = Vector({})
-            loss = 0
+            closs = 0
             n = 0
             for snt_list, training_example_list in training_data:
                 for example in training_example_list:
@@ -43,22 +48,12 @@ class LogReg_Classifier:
                         break
 
                     grad += g 
-                    loss += l
-
+                    closs += l
                     n += 1.0
 
             grad = (1.0 / n) * grad
-            loss /= n
 
-            #if 1: 
-            if i % 10 == 0:
-                #print('# iter', i, 'weights', self.weights)
-                print('# iter', i)
-                print('loss =', loss)
-                if self.weights.dot(self.weights) != 0:
-                    print('normalized loss =', loss / math.sqrt(self.weights.dot(self.weights)))
-
-            # adagrad
+            # adagrad, update weights
             sum_sq += grad.element_wise_square()
             for key in grad.v:
                 if grad.v[key] != 0:
@@ -66,10 +61,41 @@ class LogReg_Classifier:
                         self.weights.v.get(key, 0) - \
                         (1 / math.sqrt(sum_sq.v[key])) * grad.v[key]
 
-        self.weights.save(output_file)
-        if not os.path.isfile(vocab_file):
-            with codecs.open(vocab_file, 'w', 'utf-8') as f:
-                json.dump(self.vocab, f)
+            dev_loss = 0.0
+            for snt_list, dev_example_list in dev_data:
+                for example in dev_example_list:
+                    if labeled:
+                        l, g = self.compute_loss_and_grad_labeled(snt_list, example)
+                    else:
+                        l, g = self.compute_loss_and_grad(snt_list, example)
+
+                    if (l, g) == (False, False):    # TO DO: check why this happens
+                        break
+
+                    dev_loss += l
+
+            print('# iter', i, end=': ')
+            print('loss on training = {}, loss on dev = {}'.format(closs, dev_loss))
+
+            # early stopping
+            if dev_loss > pre_dev_loss:
+                dev_loss_inc_count += 1
+            else:
+                dev_loss_inc_count = 0
+            # if 2 consecutive iters have increasing dev loss, then break
+            if dev_loss_inc_count > 2:
+                break
+            else:
+                pre_dev_loss = dev_loss
+
+            # if dev loss decreased, save model
+            if dev_loss < min_dev_loss:
+                self.weights.save(output_file)
+
+            min_dev_loss = min(min_dev_loss, dev_loss)
+
+        with codecs.open(vocab_file, 'w', 'utf-8') as f:
+            json.dump(self.vocab, f)
 
     def log_sum(self, a, b):
         if a - b > 10:
@@ -157,7 +183,7 @@ class LogReg_Classifier:
         scores.append(log_norm)
         first = True
         for tup in example: 
-            for edge in "overlap before after includes timex_link PAST_REF PRESENT_REF FUTURE_REF DCT ATEMPORAL".split():
+            for edge in "overlap before after includes Depend-on PAST_REF PRESENT_REF FUTURE_REF DCT ATEMPORAL".split():
                 if first:
                     first = False
                 else:
@@ -178,7 +204,7 @@ class LogReg_Classifier:
         i = 0
         total_prob = 0
         for tup in example: 
-            for edge in "overlap before after includes timex_link PAST_REF PRESENT_REF FUTURE_REF DCT ATEMPORAL".split():
+            for edge in "overlap before after includes Depend-on PAST_REF PRESENT_REF FUTURE_REF DCT ATEMPORAL".split():
                 tup2 = (tup[0], tup[1], edge)
                 prob = math.exp(scores[i] - log_norm)
                 grad += prob * self.extract_feature_vec(snt_list, tup2, example)

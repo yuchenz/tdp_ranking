@@ -109,7 +109,7 @@ class Bilstm_Classifier:
                     loss = self.compute_loss(yhat, self.get_gold_y_index(example))
                     dev_loss += loss.scalar_value()
 
-            print('# iter', i, end=':')
+            print('# iter', i, end=': ')
             print('loss on training = {}, loss on dev = {}'.format(closs, dev_loss))
 
             # early stopping
@@ -118,16 +118,19 @@ class Bilstm_Classifier:
             else:
                 dev_loss_inc_count = 0
             # if 3 consecutive iters have increasing dev loss, then break
-            if dev_loss_inc_count > 4:  
+            if dev_loss_inc_count > 3:  
                 break
             else:
                 pre_dev_loss = dev_loss
 
+            # if dev loss decreased, save model
             if dev_loss < min_dev_loss:
                 self.model.save(
                     output_file,
                     [self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2,
                         self.lstm_fwd, self.lstm_bwd])
+
+            min_dev_loss = min(min_dev_loss, dev_loss)
 
         with codecs.open(vocab_file, 'w', 'utf-8') as f:
             json.dump(self.vocab, f)
