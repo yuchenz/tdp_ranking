@@ -28,7 +28,7 @@ class Bilstm_Classifier:
 
             # option1: use only bi-lstm vectors in the input layer of the ffnn
             #self.pW1 = self.model.add_parameters(
-            #    (size_hidden, 4 * size_lstm + 2 * len(LABEL_VOCAB)))
+            #    (size_hidden, 4 * size_lstm))
 
             # option2: add gold label one hot vectors in the input layer of the ffnn
             self.pW1 = self.model.add_parameters(
@@ -57,7 +57,7 @@ class Bilstm_Classifier:
         return classifier
 
     def train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
-        self.online_train(training_data, dev_data, output_file, vocab_file, num_iter)
+        self.online_train(training_data, dev_data, output_file, vocab_file, labeled, num_iter)
 
     def get_word_embeddings_for_document(self, snt_list):
         word_list = []
@@ -89,21 +89,21 @@ class Bilstm_Classifier:
         self.W2 = dy.parameter(self.pW2)
         self.b2 = dy.parameter(self.pb2)
 
-    def online_train(self, training_data, dev_data, output_file, vocab_file, num_iter=1000):
+    def online_train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
         trainer = dy.AdamTrainer(self.model)
 
         dev_loss_inc_count = 0
         pre_dev_loss = 0
         min_dev_loss = sys.maxsize
         for i in range(num_iter):
-            #random.shuffle(training_data)
+            random.shuffle(training_data)
             closs = 0.0
             for snt_list, training_example_list in training_data:
                 self.build_cg(snt_list)
 
                 for example in training_example_list:
                     yhat = self.scores(example)
-                    loss = self.compute_loss(yhat, self.get_gold_y_index(example))
+                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
                     closs += loss.scalar_value()
                     loss.backward()
                     trainer.update()
@@ -114,7 +114,7 @@ class Bilstm_Classifier:
                 self.build_cg(snt_list)
                 for example in dev_example_list:
                     yhat = self.scores(example)
-                    loss = self.compute_loss(yhat, self.get_gold_y_index(example))
+                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
                     dev_loss += loss.scalar_value()
 
             print('# iter', i, end=': ')
@@ -174,12 +174,18 @@ class Bilstm_Classifier:
 
         return yhat
 
-    def get_gold_y_index(self, example):
+    def get_gold_y_index(self, example, labeled):
         out_list = []
         for tup in example:
             p, c, label = tup
-            for l in EDGE_LABEL_LIST:
-                if l == label:
+            if labeled:
+                for l in EDGE_LABEL_LIST:
+                    if l == label:
+                        out_list.append(1)
+                    else:
+                        out_list.append(0)
+            elif not labeled:
+                if label != 'NO_EDGE':
                     out_list.append(1)
                 else:
                     out_list.append(0)
@@ -196,11 +202,11 @@ class Bilstm_Classifier:
     def compute_loss(self, yhat, gold_y_index):
         return -dy.log(dy.pick(dy.softmax(yhat), gold_y_index))
 
-    def yhat_index_to_yhat(self, yhat_index, example):
+    def yhat_index_to_yhat(self, yhat_index, example, labeled):
         example_index = int(yhat_index / self.size_edge_label)
         label_index = yhat_index % self.size_edge_label
 
-        label = EDGE_LABEL_LIST[label_index]
+        label = EDGE_LABEL_LIST[label_index] if labeled else 'EDGE'
         tup = example[example_index]
         yhat = (tup[0], tup[1], label)
 
@@ -211,7 +217,7 @@ class Bilstm_Classifier:
         yhat_list = sorted(enumerate(self.scores(example).npvalue()),
             key=operator.itemgetter(1), reverse=True)
 
-        yhat = self.yhat_index_to_yhat(yhat_list[0][0], example)
+        yhat = self.yhat_index_to_yhat(yhat_list[0][0], example, labeled)
 
         # for debug
         #print('predicted:\t', yhat[0], '\t', yhat[1], '\t', yhat[2])

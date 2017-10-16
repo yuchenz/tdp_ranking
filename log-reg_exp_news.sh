@@ -1,7 +1,7 @@
-data_dir=.
-train_file=tmp.train
-dev_file=tmp.dev
-test_file=tmp.test
+data_dir=../all_annotated_data
+train_file=all_news.train
+dev_file=all_news.dev
+test_file=all_news.test
 exp_id=$1
 iter=$2
 labeled=$3

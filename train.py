@@ -16,12 +16,12 @@ def get_arg_parser():
     arg_parser.add_argument("--classifier", help="which classifier to use",
         choices=["log_reg", "bi_lstm"])
     arg_parser.add_argument("--size_embed", help="word embedding size for bi-lstm model",
-        default=128)
+        default=32)
     arg_parser.add_argument("--size_lstm", help="single lstm vector size for bi-lstm model",
-        default=64)
+        default=32)
     arg_parser.add_argument("--size_hidden",
         help="feed-forward neural network's hidden layer size for bi-lstm model",
-        default=64)
+        default=32)
     arg_parser.add_argument("--size_edge_label",
         help="number of all possible edge labels", default=11)
 
