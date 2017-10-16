@@ -36,12 +36,14 @@ LABEL_VOCAB = {
     'CompletedEvent': 4,
     'State': 5,
     'ModalizedEvent': 6,
-    'OngoingEvnet': 7,
+    'OngoingEvent': 7,
     'GenericHabitual': 8,
     'GenericState': 9,
     '<START>': 10,
     '<STOP>': 11,
     '<UNK>': 12,
+    'ROOT': 13,
+    'Habitual': 14,
 }
 
 

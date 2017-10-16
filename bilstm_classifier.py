@@ -8,6 +8,7 @@ import operator
 import dynet as dy
 from vector import Vector
 from data_structures import EDGE_LABEL_LIST
+from data_structures import LABEL_VOCAB 
 
 
 class Bilstm_Classifier:
@@ -25,7 +26,14 @@ class Bilstm_Classifier:
             self.lstm_fwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
             self.lstm_bwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
 
-            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm))
+            # option1: use only bi-lstm vectors in the input layer of the ffnn
+            #self.pW1 = self.model.add_parameters(
+            #    (size_hidden, 4 * size_lstm + 2 * len(LABEL_VOCAB)))
+
+            # option2: add gold label one hot vectors in the input layer of the ffnn
+            self.pW1 = self.model.add_parameters(
+                (size_hidden, 4 * size_lstm + 2 * len(LABEL_VOCAB)))
+
             self.pb1 = self.model.add_parameters(size_hidden)
             self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
@@ -139,8 +147,16 @@ class Bilstm_Classifier:
         out_list = []
         for tup in example:
             p, c, label = tup
+
+            # option1: use only bi-lstm vectors in the input layer of the ffnn
+            #h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
+            #    self.bi_lstm[c.word_index_in_doc]])
+
+            # option2: add gold label one hot vectors in the input layer of the ffnn
             h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
-                self.bi_lstm[c.word_index_in_doc]])
+                self.bi_lstm[c.word_index_in_doc],
+                self.label_one_hot(p.label),
+                self.label_one_hot(c.label)])
 
             hidden = dy.tanh(self.W1 * h + self.b1)
             scores = self.W2 * hidden + self.b2
@@ -202,3 +218,8 @@ class Bilstm_Classifier:
         # end debug
 
         return [(yhat, 0)]
+
+    def label_one_hot(self, label):
+        vec = [0 for key in LABEL_VOCAB]
+        vec[LABEL_VOCAB[label]] = 1
+        return dy.inputVector(vec)

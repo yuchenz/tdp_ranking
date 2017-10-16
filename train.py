@@ -39,7 +39,8 @@ if __name__ == '__main__':
     if args.classifier == 'log_reg':
         classifier = LogReg_Classifier(vocab)
     elif args.classifier == 'bi_lstm':
+        size_edge_label = 1 if not args.labeled else args.size_edge_label
         classifier = Bilstm_Classifier(vocab, args.size_embed, args.size_lstm,
-            args.size_hidden, args.size_edge_label)
+            args.size_hidden, size_edge_label)
 
     classifier.train(training_data, dev_data, args.model_file, vocab_file, args.labeled, args.iter)
