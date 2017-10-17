@@ -51,6 +51,8 @@ class Bilstm_Classifier:
             classifier.pb2, classifier.lstm_fwd, classifier.lstm_bwd = \
             classifier.model.load(model_file)
 
+        classifier.size_edge_label = classifier.pb2.shape()[0]
+
         with codecs.open(vocab_file, 'r', 'utf-8') as f:
             classifier.vocab = json.load(f) 
 
@@ -155,6 +157,7 @@ class Bilstm_Classifier:
             # option2: add gold label one hot vectors in the input layer of the ffnn
             h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
                 self.bi_lstm[c.word_index_in_doc],
+                #self.label_one_hot(p.label)])
                 self.label_one_hot(p.label),
                 self.label_one_hot(c.label)])
 
