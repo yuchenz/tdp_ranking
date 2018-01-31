@@ -25,10 +25,10 @@ class Node:
 
     def __str__(self):
         return '\t'.join([str(self.snt_id), str(self.word_id_start),
-                str(self.word_id_end), self.words])
+                str(self.word_id_end), self.words, self.label])
 
 
-LABEL_VOCAB = {
+LABEL_VOCAB_FULL = {
     'Timex-RelativeConcrete': 0,
     'Timex-AbsoluteConcrete': 1,
     'Timex-RelativeVague': 2,
@@ -46,6 +46,14 @@ LABEL_VOCAB = {
     'Habitual': 14,
 }
 
+LABEL_VOCAB_TIMEX_EVENT = {
+    'Timex': 0,
+    'Event': 1,
+    '<START>': 2,
+    '<STOP>': 3,
+    '<UNK>': 4,
+    'ROOT': 5,
+}
 
 EDGE_LABEL_LIST = [
     'ROOT',

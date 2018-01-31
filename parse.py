@@ -11,6 +11,9 @@ from bilstm_classifier import Bilstm_Classifier
 def get_arg_parser():
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--test_file", help="test data to be parsed")
+    arg_parser.add_argument("--timex_event_label_input",
+        help="which timex/event label set to use: none, timex_event, or full",
+        choices=['none', 'timex_event', 'full'], default='full')
     arg_parser.add_argument("--model_file", help="the model to use")
     arg_parser.add_argument("--vocab_file", help="the vocab file to use")
     arg_parser.add_argument("--parsed_file", help="where to output the parsed results")
@@ -46,7 +49,7 @@ def decode(test_data, classifier, output_file, labeled):
         i += 1
         edge_list = []
         for instance in test_instance_list:
-            yhat_list = classifier.predict(snt_list, instance, labeled)
+            yhat_list = classifier.predict(snt_list, test_instance_list, instance, labeled)
 
             yhat = yhat_list[0][0]
             #print([[y[0][0].ID, y[0][1].ID, y[1]] for y in yhat_list])
@@ -67,14 +70,14 @@ if __name__ == '__main__':
     except OSError:
         pass
 
-    test_data = make_test_data(args.test_file)
+    test_data = make_test_data(args.test_file, args.timex_event_label_input)
 
     if args.classifier == 'baseline':
         default_label = args.default_label 
         classifier = Baseline_Classifier(args.default_label)
     elif args.classifier == 'log_reg':
-        classifier = LogReg_Classifier.load_model(args.model_file, args.vocab_file)
+        classifier = LogReg_Classifier.load_model(args.model_file, args.vocab_file, args.timex_event_label_input)
     elif args.classifier == 'bi_lstm':
-        classifier = Bilstm_Classifier.load_model(args.model_file, args.vocab_file)
+        classifier = Bilstm_Classifier.load_model(args.model_file, args.vocab_file, args.timex_event_label_input)
 
     decode(test_data, classifier, args.parsed_file, args.labeled)

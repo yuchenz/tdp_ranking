@@ -22,7 +22,7 @@ def check_example_contains_1(example):
     return False
 
 
-def make_one_doc_training_data(doc, vocab):
+def make_one_doc_training_data(doc, vocab, timex_event_label_input):
     """
     return: trainining_example_list
     [[(p_node, c_node, 'NO_EDGE'), (p_node, c_node, 'before'), ...],
@@ -55,6 +55,14 @@ def make_one_doc_training_data(doc, vocab):
     snt_node_counter = 0
     for i, edge in enumerate(edge_list):
         child, c_label, parent, l_label = edge
+        if timex_event_label_input == 'timex_event':
+            if c_label.startswith('Timex'):
+                c_label = "TIMEX"
+            else:
+                c_label = "EVENT"
+        elif timex_event_label_input == 'none':
+            c_label = 'none'
+            
         c_snt, c_start, c_end = child.split('_')
 
         if len(node_list) == 0 or c_snt != node_list[-1].snt_id:
@@ -106,7 +114,7 @@ def make_one_doc_training_data(doc, vocab):
     return [snt_list, training_example_list]
 
 
-def make_training_data(train_file):
+def make_training_data(train_file, timex_event_label_input):
     """ Given a file of multiple documents in conll-similar format,
     produce a list of training docs, each training doc is 
     (1) a list of sentences in that document; and 
@@ -122,7 +130,8 @@ def make_training_data(train_file):
     count_vocab = {}
 
     for doc in doc_list:
-        training_data.append(make_one_doc_training_data(doc, count_vocab))
+        training_data.append(make_one_doc_training_data(
+            doc, count_vocab, timex_event_label_input))
 
     index = 3
     vocab = {}
@@ -136,7 +145,7 @@ def make_training_data(train_file):
     return training_data, vocab
 
 
-def make_one_doc_test_data(doc):
+def make_one_doc_test_data(doc, timex_event_label_input):
     doc = doc.strip().split('\n')
 
     # create snt_list, edge_list
@@ -156,6 +165,14 @@ def make_one_doc_test_data(doc):
     snt_node_counter = 0
     for i, edge in enumerate(edge_list):
         child, c_label, parent, l_label = edge
+        if timex_event_label_input == 'timex_event':
+            if c_label.startswith('Timex'):
+                c_label = "TIMEX"
+            else:
+                c_label = "EVENT"
+        elif timex_event_label_input == 'none':
+            c_label = 'none'
+
         c_snt, c_start, c_end = child.split('_')
 
         if len(node_list) == 0 or c_snt != node_list[-1].snt_id:
@@ -195,13 +212,13 @@ def make_one_doc_test_data(doc):
     return [snt_list, test_instance_list]
 
 
-def make_test_data(test_file):
+def make_test_data(test_file, timex_event_label_input):
     data = codecs.open(test_file, 'r', 'utf-8').read()
     doc_list = data.strip().split('\n\nfilename')
 
     test_data = []
     
     for doc in doc_list:
-        test_data.append(make_one_doc_test_data(doc))
+        test_data.append(make_one_doc_test_data(doc, timex_event_label_input))
 
     return test_data

@@ -6,7 +6,7 @@ exp_id=$1
 iter=$2
 labeled=$3
 
-if [ $labeled = "--labeled" ];
+if [ $labeled == "--labeled" ];
 then
     l_ul=-l
 else
