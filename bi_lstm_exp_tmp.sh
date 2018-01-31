@@ -1,19 +1,22 @@
-data_dir=../all_annotated_data
-train_file=all_news.train
-dev_file=all_news.dev
-test_file=all_news.test
+data_dir=.
+train_file=tmp.train
+dev_file=tmp.dev
+test_file=tmp.test
 exp_id=$1
 iter=$2
 labeled=$3
 
-if [ $labeled = "--labeled" ];
+if [ $labeled == "--labeled" ];
 then
     l_ul=-l
 else
     l_ul=-ul
 fi
 
+echo $exp_id $iter $labeled
+
 echo training ...
+echo python -u train.py --train_file $data_dir/${train_file} --dev_file $data_dir/$dev_file --model_file models/${train_file}.bilstm-model.$exp_id --iter $iter --classifier bi_lstm $labeled 
 python -u train.py --train_file $data_dir/${train_file} --dev_file $data_dir/$dev_file --model_file models/${train_file}.bilstm-model.$exp_id --iter $iter --classifier bi_lstm $labeled 
 
 echo parsing training data ...
@@ -38,7 +41,6 @@ python parse.py --test_file $data_dir/${dev_file} --model_file models/${train_fi
 echo eval ...
 python eval.py --gold_file $data_dir/${dev_file} --parsed_file $data_dir/${dev_file}.bilstm-parsed$l_ul.$exp_id $labeled 
 
-
 echo parsing test data ...
 if [ -f $data_dir/${test_file}.bilstm-parsed$l_ul.$exp_id ]; 
 then
@@ -49,3 +51,4 @@ python parse.py --test_file $data_dir/${test_file} --model_file models/${train_f
 
 echo eval ...
 python eval.py --gold_file $data_dir/${test_file} --parsed_file $data_dir/${test_file}.bilstm-parsed$l_ul.$exp_id $labeled 
+
