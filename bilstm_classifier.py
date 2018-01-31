@@ -8,50 +8,60 @@ import operator
 import dynet as dy
 from vector import Vector
 from data_structures import EDGE_LABEL_LIST
-from data_structures import LABEL_VOCAB 
+from data_structures import LABEL_VOCAB_FULL, LABEL_VOCAB_TIMEX_EVENT 
 
 
 class Bilstm_Classifier:
     """Bilstm Classifier. """
 
     def __init__(self, vocab, size_embed, size_lstm, size_hidden,
+            timex_event_label_input, size_timex_event_label_embed, 
             size_edge_label=len(EDGE_LABEL_LIST)):
         self.model = dy.Model()
         self.size_edge_label = size_edge_label
+        if timex_event_label_input == 'none':
+            self.label_vocab = {}
+        elif timex_event_label_input == 'timex_event':
+            self.label_vocab = LABEL_VOCAB_TIMEX_EVENT
+        else:
+            self.label_vocab = LABEL_VOCAB_FULL
 
         if vocab != 0:
             self.embeddings = self.model.add_lookup_parameters(
-                    (len(vocab), size_embed))
+                (len(vocab), size_embed))
+            self.timex_event_label_embeddings = self.model.add_lookup_parameters(
+                (len(self.label_vocab), size_timex_event_label_embed))
 
-            self.lstm_fwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
-            self.lstm_bwd = dy.LSTMBuilder(1, size_embed, size_lstm, self.model)
+            self.lstm_fwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
+            self.lstm_bwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
 
-            # option1: use only bi-lstm vectors in the input layer of the ffnn
-            #self.pW1 = self.model.add_parameters(
-            #    (size_hidden, 4 * size_lstm))
-
-            # option2: add gold label one hot vectors in the input layer of the ffnn
-            self.pW1 = self.model.add_parameters(
-                (size_hidden, 4 * size_lstm + 2 * len(LABEL_VOCAB)))
-
+            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm))
             self.pb1 = self.model.add_parameters(size_hidden)
             self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
 
             self.vocab = vocab
         else:
-            self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2, \
+            self.embeddings, self.timex_event_label_embeddings, \
+                self.pW1, self.pb1, self.pW2, self.pb2, \
                 self.lstm_fwd, self.lstm_bwd, self.vocab = None, None, None, \
-                None, None, None, None, None
+                None, None, None, None, None, None
 
     @classmethod
-    def load_model(cls, model_file, vocab_file):
-        classifier = cls(0, 0, 0, 0)
-        classifier.embeddings, classifier.pW1, classifier.pb1, classifier.pW2, \
+    def load_model(cls, model_file, vocab_file, timex_event_label_input):
+        classifier = cls(0, 0, 0, 0, 0, 0)
+        classifier.embeddings, classifier.timex_event_label_embeddings, \
+            classifier.pW1, classifier.pb1, classifier.pW2, \
             classifier.pb2, classifier.lstm_fwd, classifier.lstm_bwd = \
             classifier.model.load(model_file)
 
         classifier.size_edge_label = classifier.pb2.shape()[0]
+        if timex_event_label_input == 'none':
+            classifier.label_vocab = {}
+        elif timex_event_label_input == 'timex_event':
+            classifier.label_vocab = LABEL_VOCAB_TIMEX_EVENT
+        else:
+            classifier.label_vocab = LABEL_VOCAB_FULL
 
         with codecs.open(vocab_file, 'r', 'utf-8') as f:
             classifier.vocab = json.load(f) 
@@ -61,24 +71,37 @@ class Bilstm_Classifier:
     def train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
         self.online_train(training_data, dev_data, output_file, vocab_file, labeled, num_iter)
 
-    def get_word_embeddings_for_document(self, snt_list):
+    def get_embeddings_for_document(self, snt_list, example_list):
+        """ Get word embeddings (concatenated with timex/event label embeddings if picked)
+        for bilstm input.
+        """
+
+        # build word list
         word_list = []
-        for snt in snt_list:
+        timex_event_label_list = []
+        for i, snt in enumerate(snt_list):
             for word in snt:
                 word_list.append(word)
+                timex_event_label_list.append('<UNK>')
 
-        return [dy.lookup(
-            self.embeddings,
-            self.vocab.get(word, self.vocab['<UNK>'])
-            ) for word in word_list]
+        # build timex/event label list
+        for example in example_list:
+            child = example[0][1]
+            timex_event_label_list[child.word_index_in_doc] = child.label
 
-    def build_cg(self, snt_list):
+        return [dy.concatenate([
+            self.embeddings[self.vocab.get(word, self.vocab['<UNK>'])],
+            self.timex_event_label_embeddings[
+                self.label_vocab.get(timex_event_label_list[i], self.label_vocab['<UNK>'])]
+            ]) for i, word in enumerate(word_list)]
+
+    def build_cg(self, snt_list, example_list):
         dy.renew_cg()
 
         f_init = self.lstm_fwd.initial_state()
         b_init = self.lstm_bwd.initial_state()
 
-        word_embeddings = self.get_word_embeddings_for_document(snt_list)
+        word_embeddings = self.get_embeddings_for_document(snt_list, example_list)
 
         f_exps = f_init.transduce(word_embeddings)
         b_exps = b_init.transduce(reversed(word_embeddings))
@@ -101,7 +124,8 @@ class Bilstm_Classifier:
             random.shuffle(training_data)
             closs = 0.0
             for snt_list, training_example_list in training_data:
-                self.build_cg(snt_list)
+                #import pdb; pdb.set_trace()
+                self.build_cg(snt_list, training_example_list)
 
                 for example in training_example_list:
                     yhat = self.scores(example)
@@ -113,7 +137,7 @@ class Bilstm_Classifier:
             # compute dev loss for early stopping
             dev_loss = 0.0
             for snt_list, dev_example_list in dev_data:
-                self.build_cg(snt_list)
+                self.build_cg(snt_list, dev_example_list)
                 for example in dev_example_list:
                     yhat = self.scores(example)
                     loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
@@ -128,7 +152,7 @@ class Bilstm_Classifier:
             else:
                 dev_loss_inc_count = 0
             # if 3 consecutive iters have increasing dev loss, then break
-            if dev_loss_inc_count > 3:  
+            if dev_loss_inc_count > 1:  
                 break
             else:
                 pre_dev_loss = dev_loss
@@ -137,7 +161,8 @@ class Bilstm_Classifier:
             if dev_loss < min_dev_loss:
                 self.model.save(
                     output_file,
-                    [self.embeddings, self.pW1, self.pb1, self.pW2, self.pb2,
+                    [self.embeddings, self.timex_event_label_embeddings,
+                        self.pW1, self.pb1, self.pW2, self.pb2,
                         self.lstm_fwd, self.lstm_bwd])
 
             min_dev_loss = min(min_dev_loss, dev_loss)
@@ -150,16 +175,8 @@ class Bilstm_Classifier:
         for tup in example:
             p, c, label = tup
 
-            # option1: use only bi-lstm vectors in the input layer of the ffnn
-            #h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
-            #    self.bi_lstm[c.word_index_in_doc]])
-
-            # option2: add gold label one hot vectors in the input layer of the ffnn
             h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
-                self.bi_lstm[c.word_index_in_doc],
-                #self.label_one_hot(p.label)])
-                self.label_one_hot(p.label),
-                self.label_one_hot(c.label)])
+                self.bi_lstm[c.word_index_in_doc]])
 
             hidden = dy.tanh(self.W1 * h + self.b1)
             scores = self.W2 * hidden + self.b2
@@ -215,8 +232,8 @@ class Bilstm_Classifier:
 
         return yhat
 
-    def predict(self, snt_list, example, labeled):
-        self.build_cg(snt_list)
+    def predict(self, snt_list, example_list, example, labeled):
+        self.build_cg(snt_list, example_list)
         yhat_list = sorted(enumerate(self.scores(example).npvalue()),
             key=operator.itemgetter(1), reverse=True)
 
@@ -229,6 +246,6 @@ class Bilstm_Classifier:
         return [(yhat, 0)]
 
     def label_one_hot(self, label):
-        vec = [0 for key in LABEL_VOCAB]
-        vec[LABEL_VOCAB[label]] = 1
+        vec = [0 for key in self.self.label_vocab]
+        vec[self.label_vocab[label]] = 1
         return dy.inputVector(vec)
