@@ -12,7 +12,7 @@ class Node:
         self.index_in_snt = index_in_snt
         self.word_index_in_doc = word_index_in_doc
         self.words = words
-        self.label = label
+        self.label = label  # timex/event label
         self.parent = None
         self.children = []
 
@@ -68,3 +68,37 @@ EDGE_LABEL_LIST = [
     'includes',
     'Depend-on',
 ]
+
+def make_label_dict(label_set):
+    if label_set == 'BIO':
+        return {'B': 0, 'I': 1, 'O': 2}
+    elif label_set == 'TIMEX_EVENT':
+        return {'B_Timex': 0, 'I_Timex':1, 'B_Event': 2, 'I_Event':3, 'O':4}
+    elif label_set == 'FULL':
+        return {
+            'B_Timex-RelativeConcrete': 0,
+            'I_Timex-RelativeConcrete': 1,
+            'B_Timex-RelativeVague': 2,
+            'I_Timex-RelativeVague': 3,
+            'B_Timex-AbsoluteConcrete': 4,
+            'I_Timex-AbsoluteConcrete': 5,
+            'B_Timex-AbsoluteVague': 6,
+            'I_Timex-AbsoluteVague': 7,
+            'B_Event': 8,
+            'I_Event': 9,
+            'B_State': 10,
+            'I_State': 11,
+            'B_Habitual': 12,
+            'I_Habitual': 13,
+            'B_ModalizedEvent': 14,
+            'I_ModalizedEvent': 15,
+            'B_OngoingEvent': 16,
+            'I_OngoingEvent': 17,
+            'B_GenericState': 18,
+            'I_GenericState': 19,
+            'B_GenericHabitual': 20,
+            'I_GenericHabitual': 21,
+            'B_CompletedEvent': 22,
+            'I_CompletedEvent': 23,
+            'O': 24,
+        }

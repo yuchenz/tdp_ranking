@@ -32,8 +32,9 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
 
     doc = doc.strip().split('\n')
 
-    # create snt_list, edge_list
+    # create snt_list, initial gold_bio_list (only 'O's), edge_list
     snt_list = []
+    gold_bio_list = []
     edge_list = []
     mode = None
     for line in doc:
@@ -41,6 +42,7 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
             mode = line.strip().split(':')[-1]
         elif mode == 'SNT_LIST':
             snt_list.append(line.strip().split())
+            gold_bio_list.append(['O' for word in snt_list[-1]])
         elif mode == 'EDGE_LIST':
             edge_list.append(line.strip().split())
 
@@ -50,7 +52,7 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
             if word not in vocab:
                 vocab[word] = vocab.get(word, 0) + 1
 
-    # create node_list
+    # create node_list, update gold_bio_list
     node_list = []
     snt_node_counter = 0
     for i, edge in enumerate(edge_list):
@@ -64,6 +66,11 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
             c_label = 'none'
             
         c_snt, c_start, c_end = child.split('_')
+
+        # update gold_bio_list
+        gold_bio_list[int(c_snt)][int(c_start)] = 'B_' + c_label
+        for j in range(int(c_start) + 1, int(c_end) + 1):
+            gold_bio_list[int(c_snt)][int(j)] = 'I_' + c_label
 
         if len(node_list) == 0 or c_snt != node_list[-1].snt_id:
             snt_node_counter = 0
@@ -111,7 +118,7 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
 
         training_example_list.append(example)
 
-    return [snt_list, training_example_list]
+    return [snt_list, training_example_list, gold_bio_list]
 
 
 def make_training_data(train_file, timex_event_label_input):
