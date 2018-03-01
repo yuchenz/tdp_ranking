@@ -59,9 +59,9 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
         child, c_label, parent, l_label = edge
         if timex_event_label_input == 'timex_event':
             if c_label.startswith('Timex'):
-                c_label = "TIMEX"
+                c_label = "Timex"
             else:
-                c_label = "EVENT"
+                c_label = "Event"
         elif timex_event_label_input == 'none':
             c_label = 'none'
             
@@ -174,9 +174,9 @@ def make_one_doc_test_data(doc, timex_event_label_input):
         child, c_label, parent, l_label = edge
         if timex_event_label_input == 'timex_event':
             if c_label.startswith('Timex'):
-                c_label = "TIMEX"
+                c_label = "Timex"
             else:
-                c_label = "EVENT"
+                c_label = "Event"
         elif timex_event_label_input == 'none':
             c_label = 'none'
 
@@ -224,8 +224,35 @@ def make_test_data(test_file, timex_event_label_input):
     doc_list = data.strip().split('\n\nfilename')
 
     test_data = []
-    
     for doc in doc_list:
         test_data.append(make_one_doc_test_data(doc, timex_event_label_input))
+
+    return test_data
+
+
+def make_one_doc_test_data_for_bio_tagging(doc, timex_event_label_input):
+    doc = doc.strip().split('\n')
+
+    # create snt_list
+    snt_list = []
+    for line in doc:
+        if line.endswith('LIST'):
+            mode = line.strip().split(':')[-1]
+        elif mode == 'SNT_LIST':
+            snt_list.append(line.strip().split())
+        elif mode == 'EDGE_LIST':
+            break
+
+    return snt_list
+
+
+def make_test_data_for_bio_tagging(test_file, timex_event_label_input):
+    data = codecs.open(test_file, 'r', 'utf-8').read()
+    doc_list = data.strip().split('\n\nfilename')
+
+    test_data = []
+    for doc in doc_list:
+        test_data.append(make_one_doc_test_data_for_bio_tagging(
+            doc, timex_event_label_input))
 
     return test_data

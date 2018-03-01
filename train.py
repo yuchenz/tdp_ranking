@@ -11,7 +11,7 @@ def get_arg_parser():
     arg_parser.add_argument("--train_file", help="training data")
     arg_parser.add_argument("--timex_event_label_input",
         help="which timex/event label set to use: none, timex_event, or full",
-        choices=['none', 'timex_event', 'full'], default='full')
+        choices=['none', 'timex_event', 'full'], default='timex_event')
     arg_parser.add_argument("--dev_file", help="dev data")
     arg_parser.add_argument("--model_file", help="where to store the model")
     arg_parser.add_argument("--iter", help="number of interations", type=int)
@@ -24,7 +24,7 @@ def get_arg_parser():
         help="word embedding size for bi-lstm model",
         default=32)
     arg_parser.add_argument("--size_timex_event_label_embed",
-        help="timex/event label embedding size for bi-lstm model", default=16)
+        help="timex/event label embedding size for bi-lstm model", default=32)
     arg_parser.add_argument("--size_lstm",
         help="single lstm vector size for bi-lstm model",
         default=32)
@@ -64,7 +64,6 @@ if __name__ == '__main__':
         size_edge_label = 1 if not args.labeled else args.size_edge_label
         classifier = MTL_Classifier(vocab, args.size_embed, args.size_lstm,
             args.size_tag_hidden, args.size_parse_hidden,
-            args.timex_event_label_input, args.size_timex_event_label_embed,
-            size_edge_label)
+            args.timex_event_label_input, size_edge_label)
 
     classifier.train(training_data, dev_data, args.model_file, vocab_file, args.labeled, args.iter)

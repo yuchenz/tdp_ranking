@@ -27,7 +27,8 @@ def readin_tuples(filename):
                 edge_tuples.append([])
         elif mode == 'EDGE_LIST':
             child, child_label, parent, link_label = line.strip().split()
-            edge_tuples[-1].append((child, parent, link_label))
+            #child_label = normalize_timex_event_label(child_label)
+            edge_tuples[-1].append((child, parent, link_label, child_label))
 
     return edge_tuples
 
@@ -47,7 +48,7 @@ def unlabeled_eval(gold_tuples, auto_tuples):
             i, true_positive, false_positive, false_negative)) 
         p = true_positive / (true_positive + false_positive)
         r = true_positive / (true_positive + false_negative)
-        f = 2 * p * r / (p + r)
+        f = 2 * p * r / (p + r) if p + r > 0 else 0
 
         counts.append((true_positive, false_positive, false_negative))
         scores.append((p, r, f))
@@ -67,7 +68,7 @@ def unlabeled_eval(gold_tuples, auto_tuples):
 
     p = true_p / (true_p + false_p)
     r = true_p / (true_p + false_n)
-    f = 2 * p * r / (p + r)
+    f = 2 * p * r / (p + r) if p + r > 0 else 0
 
     #print('micro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
     print('micro average: f = {:.3f}'.format(f))
@@ -113,6 +114,45 @@ def labeled_eval(gold_tuples, auto_tuples):
     #print('micro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
     print('micro average: f = {:.3f}'.format(f))
 
+def bio_exact_match_eval(gold_tuples, auto_tuples):
+    bio_tag_set = set([gtup[-1] for gtups in gold_tuples for gtup in gtups])
+
+    for bio_tag in list(bio_tag_set):
+        print('='*30 + 'bio tagging eval for: ' + bio_tag)
+        counts = []
+        scores = []
+        for i, (gtups, atups) in enumerate(zip(gold_tuples, auto_tuples)):
+            gbios = set([gtup[0] for gtup in gtups if gtup[-1] == bio_tag])
+            abios = set([atup[0] for atup in atups if atup[-1] == bio_tag])
+
+            tp = len(gbios.intersection(abios))
+            fp = len(abios.difference(gbios))
+            fn = len(gbios.difference(abios))
+
+            p = tp / (tp + fp)
+            r = tp / (tp + fn)
+            f = 2 * p * r / (p + r) if p + r > 0 else 0
+
+            counts.append((tp, fp, fn))
+            scores.append((p, r, f))
+
+        # macro average
+        p = sum([score[0] for score in scores]) / len(scores)
+        r = sum([score[1] for score in scores]) / len(scores)
+        f = sum([score[2] for score in scores]) / len(scores)
+
+        print('macro average: f = {:.3f}'.format(f), end='; ')
+
+        # micro average
+        tp = sum([count[0] for count in counts])
+        fp = sum([count[1] for count in counts])
+        fn = sum([count[2] for count in counts])
+
+        p = tp / (tp + fp)
+        r = tp / (tp + fn)
+        f = 2 * p * r / (p + r)
+
+        print('micro average: f = {:.3f}'.format(f), end='; ')
 
 if __name__ == '__main__':
     arg_parser = get_arg_parser()
@@ -120,6 +160,8 @@ if __name__ == '__main__':
 
     gold_tuples = readin_tuples(args.gold_file)
     auto_tuples = readin_tuples(args.parsed_file)
+
+    #bio_exact_match_eval(gold_tuples, auto_tuples)
 
     if args.labeled:
         labeled_eval(gold_tuples, auto_tuples)
