@@ -76,7 +76,7 @@ if __name__ == '__main__':
         default_label = args.default_label 
         classifier = Baseline_Classifier(args.default_label)
     elif args.classifier == 'log_reg':
-        classifier = LogReg_Classifier.load_model(args.model_file, args.vocab_file, args.timex_event_label_input)
+        classifier = LogReg_Classifier.load_model(args.model_file, args.vocab_file)
     elif args.classifier == 'bi_lstm':
         classifier = Bilstm_Classifier.load_model(args.model_file, args.vocab_file, args.timex_event_label_input)
 

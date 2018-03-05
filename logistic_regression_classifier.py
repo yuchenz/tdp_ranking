@@ -215,7 +215,7 @@ class LogReg_Classifier:
 
         return loss, grad
 
-    def predict(self, snt_list, example, labeled):
+    def predict(self, snt_list, example_list, example, labeled):
         if labeled:
             return self.predict_labeled(snt_list, example)
         else:

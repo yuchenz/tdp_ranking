@@ -5,7 +5,7 @@ class Baseline_Classifier:
     def __init__(self, default_label):
         self.default_label = default_label
 
-    def predict(self, snt_list, example, labeled):
+    def predict(self, snt_list, example_list, example, labeled):
         if labeled:
             return self.predict_labeled(snt_list, example)
         else:
