@@ -6,6 +6,8 @@ import sys
 import math
 import operator
 import dynet as dy
+import numpy as np
+import gensim
 from vector import Vector
 from data_structures import EDGE_LABEL_LIST
 from data_structures import LABEL_VOCAB_FULL, LABEL_VOCAB_TIMEX_EVENT 
@@ -27,8 +29,18 @@ class Bilstm_Classifier:
             self.label_vocab = LABEL_VOCAB_FULL
 
         if vocab != 0:
+            self.vocab = vocab
+
+            # don't initialize self.embeddings
+            #self.embeddings = self.model.add_lookup_parameters(
+            #    (len(vocab), size_embed))
+
+            # initialize self.embeddings with pre-trained word embeddings
+            size_embed = 300
             self.embeddings = self.model.add_lookup_parameters(
                 (len(vocab), size_embed))
+            self.initialize_word_embeddings(size_embed)
+
             self.timex_event_label_embeddings = self.model.add_lookup_parameters(
                 (len(self.label_vocab), size_timex_event_label_embed))
 
@@ -39,13 +51,26 @@ class Bilstm_Classifier:
             self.pb1 = self.model.add_parameters(size_hidden)
             self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
-
-            self.vocab = vocab
         else:
             self.embeddings, self.timex_event_label_embeddings, \
                 self.pW1, self.pb1, self.pW2, self.pb2, \
                 self.lstm_fwd, self.lstm_bwd, self.vocab = None, None, None, \
                 None, None, None, None, None, None
+
+    def initialize_word_embeddings(self, size_embed):
+        ch_pre_word_embed_filename = \
+            "/home/b/yuchenz/Projects/Word2Vec/exprmnt/vectors.gigaword.ch.bin"
+        ch_pre_word_embed = gensim.models.KeyedVectors.load_word2vec_format(
+            ch_pre_word_embed_filename, binary=True, unicode_errors='ignore')
+
+        vectors = []
+        for word in self.vocab:
+            if word in ch_pre_word_embed:
+                vectors.append(ch_pre_word_embed[word])
+            else:
+                vectors.append(np.zeros(size_embed))
+
+        self.embeddings.init_from_array(np.array(vectors))
 
     @classmethod
     def load_model(cls, model_file, vocab_file, timex_event_label_input):
@@ -152,7 +177,7 @@ class Bilstm_Classifier:
             else:
                 dev_loss_inc_count = 0
             # if 3 consecutive iters have increasing dev loss, then break
-            if dev_loss_inc_count > 1:  
+            if dev_loss_inc_count > 2:  
                 break
             else:
                 pre_dev_loss = dev_loss
