@@ -35,7 +35,7 @@ class Bilstm_Classifier:
             self.lstm_fwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
             self.lstm_bwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
 
-            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm + 5))
+            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm + 5 + 2))
             self.pb1 = self.model.add_parameters(size_hidden)
             self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
@@ -152,7 +152,7 @@ class Bilstm_Classifier:
             else:
                 dev_loss_inc_count = 0
             # if 3 consecutive iters have increasing dev loss, then break
-            if dev_loss_inc_count > 1:  
+            if dev_loss_inc_count > 2:  
                 break
             else:
                 pre_dev_loss = dev_loss
@@ -194,10 +194,10 @@ class Bilstm_Classifier:
             nd = dy.inputVector(self.feat_nd_bin(p, c))
 
             # feat: in same sentence
-            #ss = dy.inputVector([1, 0] if p.snt_id == c.snt_id else [0, 1])
+            ss = dy.inputVector([1, 0] if p.snt_id == c.snt_id else [0, 1])
 
             h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
-                self.bi_lstm[c.word_index_in_doc], nd])
+                self.bi_lstm[c.word_index_in_doc], nd, ss])
 
             hidden = dy.tanh(self.W1 * h + self.b1)
             scores = self.W2 * hidden + self.b2
