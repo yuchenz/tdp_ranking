@@ -35,7 +35,7 @@ class Bilstm_Classifier:
             self.lstm_fwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
             self.lstm_bwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
 
-            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm))
+            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm + 5))
             self.pb1 = self.model.add_parameters(size_hidden)
             self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
@@ -170,13 +170,34 @@ class Bilstm_Classifier:
         with codecs.open(vocab_file, 'w', 'utf-8') as f:
             json.dump(self.vocab, f)
 
+    def feat_nd_bin(self, p, c):
+        vec = [0 for i in range(5)]
+        if c.index - p.index == 1:
+            vec[0] = 1
+        elif c.index - p.index > 1 and c.snt_id == p.snt_id:
+            vec[1] = 1
+        elif c.index - p.index > 1:
+            vec[2] = 1
+        elif c.index - p.index < 1:
+            vec[3] = 1
+        else:
+            vec[4] = 1
+
+        return vec
+
     def scores(self, example):
         out_list = []
         for tup in example:
             p, c, label = tup
 
+            # feat: node distance 
+            nd = dy.inputVector(self.feat_nd_bin(p, c))
+
+            # feat: in same sentence
+            #ss = dy.inputVector([1, 0] if p.snt_id == c.snt_id else [0, 1])
+
             h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
-                self.bi_lstm[c.word_index_in_doc]])
+                self.bi_lstm[c.word_index_in_doc], nd])
 
             hidden = dy.tanh(self.W1 * h + self.b1)
             scores = self.W2 * hidden + self.b2
