@@ -24,15 +24,15 @@ def get_arg_parser():
     arg_parser.add_argument("--default_label",
         help="default edge label to use for baseline parser",
         choices=["before", "overlap"])
-    arg_parser.add_argument("--size_embed", help="word embedding size for bi-lstm model",
-        default=128)
-    arg_parser.add_argument("--size_lstm", help="single lstm vector size for bi-lstm model",
-        default=64)
-    arg_parser.add_argument("--size_hidden",
-        help="feed-forward neural network's hidden layer size for bi-lstm model",
-        default=64)
-    arg_parser.add_argument("--size_edge_label",
-        help="number of all possible edge labels", default=11)
+    #arg_parser.add_argument("--size_embed", help="word embedding size for bi-lstm model",
+    #    default=16)
+    #arg_parser.add_argument("--size_lstm", help="single lstm vector size for bi-lstm model",
+    #    default=16)
+    #arg_parser.add_argument("--size_hidden",
+    #    help="feed-forward neural network's hidden layer size for bi-lstm model",
+    #    default=16)
+    #arg_parser.add_argument("--size_edge_label",
+    #    help="number of all possible edge labels", default=11)
 
     return arg_parser
 
