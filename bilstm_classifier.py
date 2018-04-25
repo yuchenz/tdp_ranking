@@ -220,6 +220,7 @@ class Bilstm_Classifier:
                 self.attend(p), self.attend(c), nd, ss])
 
             hidden = dy.rectify(self.W1 * g + self.b1)
+            hidden = dy.dropout(hidden, 0.5)
             scores = self.W2 * hidden + self.b2
             out_list.append(scores)
 
