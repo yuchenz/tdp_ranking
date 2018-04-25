@@ -219,7 +219,7 @@ class Bilstm_Classifier:
                 self.bi_lstm[c.end_word_index_in_doc],
                 self.attend(p), self.attend(c), nd, ss])
 
-            hidden = dy.tanh(self.W1 * g + self.b1)
+            hidden = dy.rectify(self.W1 * g + self.b1)
             scores = self.W2 * hidden + self.b2
             out_list.append(scores)
 
@@ -249,7 +249,7 @@ class Bilstm_Classifier:
 
         attn_w = dy.parameter(self.attention_w)
 
-        unnormalized = dy.transpose(dy.tanh(attn_w * input_mat))
+        unnormalized = dy.transpose(dy.rectify(attn_w * input_mat))
         att_weights = dy.softmax(unnormalized)
 
         weighted_sum = input_mat * att_weights
