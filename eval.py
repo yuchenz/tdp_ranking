@@ -47,7 +47,7 @@ def unlabeled_eval(gold_tuples, auto_tuples):
             i, true_positive, false_positive, false_negative)) 
         p = true_positive / (true_positive + false_positive)
         r = true_positive / (true_positive + false_negative)
-        f = 2 * p * r / (p + r)
+        f = 2 * p * r / (p + r) if p + r != 0 else 0
 
         counts.append((true_positive, false_positive, false_negative))
         scores.append((p, r, f))
@@ -67,7 +67,7 @@ def unlabeled_eval(gold_tuples, auto_tuples):
 
     p = true_p / (true_p + false_p)
     r = true_p / (true_p + false_n)
-    f = 2 * p * r / (p + r)
+    f = 2 * p * r / (p + r) if p + r != 0 else 0
 
     #print('micro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
     print('micro average: f = {:.3f}'.format(f))
@@ -108,7 +108,7 @@ def labeled_eval(gold_tuples, auto_tuples):
 
     p = true_p / (true_p + false_p)
     r = true_p / (true_p + false_n)
-    f = 2 * p * r / (p + r)
+    f = 2 * p * r / (p + r) if p + r != 0 else 0
 
     #print('micro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
     print('micro average: f = {:.3f}'.format(f))
