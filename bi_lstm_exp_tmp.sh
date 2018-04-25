@@ -52,3 +52,5 @@ python parse.py --test_file $data_dir/${test_file} --model_file models/${train_f
 echo eval ...
 python eval.py --gold_file $data_dir/${test_file} --parsed_file $data_dir/${test_file}.bilstm-parsed$l_ul.$exp_id $labeled 
 
+: <<'END'
+END

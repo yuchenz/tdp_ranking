@@ -70,6 +70,7 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
 
         c_node = Node(int(c_snt), int(c_start), int(c_end), i, snt_node_counter,
             get_word_index_in_doc(snt_list, int(c_snt), int(c_start)),
+            get_word_index_in_doc(snt_list, int(c_snt), int(c_end)),
             ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
             c_label)
         node_list.append(c_node)
@@ -180,6 +181,7 @@ def make_one_doc_test_data(doc, timex_event_label_input):
 
         c_node = Node(int(c_snt), int(c_start), int(c_end), i, snt_node_counter, 
             get_word_index_in_doc(snt_list, int(c_snt), int(c_start)),
+            get_word_index_in_doc(snt_list, int(c_snt), int(c_end)),
             ''.join(snt_list[int(c_snt)][int(c_start):int(c_end) + 1]),
             c_label)
         node_list.append(c_node)

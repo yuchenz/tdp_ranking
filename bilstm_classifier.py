@@ -17,8 +17,10 @@ class Bilstm_Classifier:
     def __init__(self, vocab, size_embed, size_lstm, size_hidden,
             timex_event_label_input, size_timex_event_label_embed, 
             size_edge_label=len(EDGE_LABEL_LIST)):
+
         self.model = dy.Model()
         self.size_edge_label = size_edge_label
+
         if timex_event_label_input == 'none':
             self.label_vocab = {}
         elif timex_event_label_input == 'timex_event':
@@ -28,31 +30,41 @@ class Bilstm_Classifier:
 
         if vocab != 0:
             self.embeddings = self.model.add_lookup_parameters(
-                (len(vocab), size_embed))
-            self.timex_event_label_embeddings = self.model.add_lookup_parameters(
-                (len(self.label_vocab), size_timex_event_label_embed))
+                    (len(vocab), size_embed))
+            self.timex_event_label_embeddings = \
+                    self.model.add_lookup_parameters(
+                    (len(self.label_vocab), size_timex_event_label_embed))
 
-            self.lstm_fwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
-            self.lstm_bwd = dy.LSTMBuilder(1, size_embed + size_timex_event_label_embed, size_lstm, self.model)
+            self.lstm_fwd = dy.LSTMBuilder(
+                    1, size_embed + size_timex_event_label_embed,
+                    size_lstm, self.model)
+            self.lstm_bwd = dy.LSTMBuilder(
+                    1, size_embed + size_timex_event_label_embed,
+                    size_lstm, self.model)
 
-            self.pW1 = self.model.add_parameters((size_hidden, 4 * size_lstm + 5 + 2))
+            self.pW1 = self.model.add_parameters(
+                    (size_hidden, 12 * size_lstm + 5 + 2))
             self.pb1 = self.model.add_parameters(size_hidden)
-            self.pW2 = self.model.add_parameters((size_edge_label, size_hidden))
+            self.pW2 = self.model.add_parameters(
+                    (size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
+
+            self.attention_w = self.model.add_parameters((1, size_lstm * 2))
 
             self.vocab = vocab
         else:
             self.embeddings, self.timex_event_label_embeddings, \
                 self.pW1, self.pb1, self.pW2, self.pb2, \
-                self.lstm_fwd, self.lstm_bwd, self.vocab = None, None, None, \
-                None, None, None, None, None, None
+                self.lstm_fwd, self.lstm_bwd, self.attention_w, self.vocab = \
+                None, None, None, None, None, None, None, None, None, None
 
     @classmethod
     def load_model(cls, model_file, vocab_file, timex_event_label_input):
         classifier = cls(0, 0, 0, 0, 0, 0)
         classifier.embeddings, classifier.timex_event_label_embeddings, \
             classifier.pW1, classifier.pb1, classifier.pW2, \
-            classifier.pb2, classifier.lstm_fwd, classifier.lstm_bwd = \
+            classifier.pb2, classifier.lstm_fwd, classifier.lstm_bwd,\
+            classifier.attention_w = \
             classifier.model.load(model_file)
 
         classifier.size_edge_label = classifier.pb2.shape()[0]
@@ -87,12 +99,15 @@ class Bilstm_Classifier:
         # build timex/event label list
         for example in example_list:
             child = example[0][1]
-            timex_event_label_list[child.word_index_in_doc] = child.label
+            for k in range(child.start_word_index_in_doc,
+                    child.end_word_index_in_doc + 1):
+                timex_event_label_list[k] = child.label
 
         return [dy.concatenate([
             self.embeddings[self.vocab.get(word, self.vocab['<UNK>'])],
             self.timex_event_label_embeddings[
-                self.label_vocab.get(timex_event_label_list[i], self.label_vocab['<UNK>'])]
+                self.label_vocab.get(timex_event_label_list[i],
+                    self.label_vocab['<UNK>'])]
             ]) for i, word in enumerate(word_list)]
 
     def build_cg(self, snt_list, example_list):
@@ -163,7 +178,7 @@ class Bilstm_Classifier:
                     output_file,
                     [self.embeddings, self.timex_event_label_embeddings,
                         self.pW1, self.pb1, self.pW2, self.pb2,
-                        self.lstm_fwd, self.lstm_bwd])
+                        self.lstm_fwd, self.lstm_bwd, self.attention_w])
 
             min_dev_loss = min(min_dev_loss, dev_loss)
 
@@ -196,10 +211,15 @@ class Bilstm_Classifier:
             # feat: in same sentence
             ss = dy.inputVector([1, 0] if p.snt_id == c.snt_id else [0, 1])
 
-            h = dy.concatenate([self.bi_lstm[p.word_index_in_doc],
-                self.bi_lstm[c.word_index_in_doc], nd, ss])
+            # pair representation g
+            g = dy.concatenate([
+                self.bi_lstm[p.start_word_index_in_doc],
+                self.bi_lstm[p.end_word_index_in_doc],
+                self.bi_lstm[c.start_word_index_in_doc],
+                self.bi_lstm[c.end_word_index_in_doc],
+                self.attend(p), self.attend(c), nd, ss])
 
-            hidden = dy.tanh(self.W1 * h + self.b1)
+            hidden = dy.tanh(self.W1 * g + self.b1)
             scores = self.W2 * hidden + self.b2
             out_list.append(scores)
 
@@ -214,6 +234,27 @@ class Bilstm_Classifier:
         # end debug
 
         return yhat
+
+    def attend(self, node):
+        '''attention mechanism to return a weighted sum of bilstm vectors
+        of all words in node '''
+
+        if node.snt_id == -1:   # if node is a pre-defined meta node
+            return self.bi_lstm[node.start_word_index_in_doc]
+
+        #print(node.start_word_index_in_doc, node.end_word_index_in_doc)
+        vectors = self.bi_lstm[
+                node.start_word_index_in_doc:node.end_word_index_in_doc + 1]
+        input_mat = dy.concatenate_cols(vectors)
+
+        attn_w = dy.parameter(self.attention_w)
+
+        unnormalized = dy.transpose(dy.tanh(attn_w * input_mat))
+        att_weights = dy.softmax(unnormalized)
+
+        weighted_sum = input_mat * att_weights
+
+        return weighted_sum
 
     def get_gold_y_index(self, example, labeled):
         out_list = []
