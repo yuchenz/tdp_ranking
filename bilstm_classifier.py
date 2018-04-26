@@ -1,12 +1,9 @@
 import codecs
 import random
 import json
-import os
 import sys
-import math
 import operator
 import dynet as dy
-from vector import Vector
 from data_structures import EDGE_LABEL_LIST
 from data_structures import LABEL_VOCAB_FULL, LABEL_VOCAB_TIMEX_EVENT 
 
@@ -14,32 +11,33 @@ from data_structures import LABEL_VOCAB_FULL, LABEL_VOCAB_TIMEX_EVENT
 class Bilstm_Classifier:
     """Bilstm Classifier. """
 
-    def __init__(self, vocab, size_embed, size_lstm, size_hidden,
-            timex_event_label_input, size_timex_event_label_embed, 
+    def __init__(self, word_vocab, size_word_embed, size_lstm, size_hidden,
+            TE_label_set, size_TE_label_embed, 
             size_edge_label=len(EDGE_LABEL_LIST)):
 
         self.model = dy.Model()
         self.size_edge_label = size_edge_label
+        self.TE_label_set = TE_label_set
 
-        if timex_event_label_input == 'none':
-            self.label_vocab = {}
-        elif timex_event_label_input == 'timex_event':
-            self.label_vocab = LABEL_VOCAB_TIMEX_EVENT
+        if TE_label_set == 'none':
+            self.TE_label_vocab = {}
+        elif TE_label_set == 'timex_event':
+            self.TE_label_vocab = LABEL_VOCAB_TIMEX_EVENT
         else:
-            self.label_vocab = LABEL_VOCAB_FULL
+            self.TE_label_vocab = LABEL_VOCAB_FULL
 
-        if vocab != 0:
+        if word_vocab:
             self.embeddings = self.model.add_lookup_parameters(
-                    (len(vocab), size_embed))
-            self.timex_event_label_embeddings = \
+                    (len(word_vocab), size_word_embed))
+            self.TE_label_embeddings = \
                     self.model.add_lookup_parameters(
-                    (len(self.label_vocab), size_timex_event_label_embed))
+                    (len(self.TE_label_vocab), size_TE_label_embed))
 
             self.lstm_fwd = dy.LSTMBuilder(
-                    1, size_embed + size_timex_event_label_embed,
+                    1, size_word_embed + size_TE_label_embed,
                     size_lstm, self.model)
             self.lstm_bwd = dy.LSTMBuilder(
-                    1, size_embed + size_timex_event_label_embed,
+                    1, size_word_embed + size_TE_label_embed,
                     size_lstm, self.model)
 
             self.pW1 = self.model.add_parameters(
@@ -49,66 +47,78 @@ class Bilstm_Classifier:
                     (size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
 
-            self.attention_w = self.model.add_parameters((1, size_lstm * 2))
+            self.attention_W = self.model.add_parameters((1, size_lstm * 2))
 
-            self.vocab = vocab
+            self.word_vocab = word_vocab
         else:
-            self.embeddings, self.timex_event_label_embeddings, \
+            self.embeddings, self.TE_label_embeddings, \
                 self.pW1, self.pb1, self.pW2, self.pb2, \
-                self.lstm_fwd, self.lstm_bwd, self.attention_w, self.vocab = \
+                self.lstm_fwd, self.lstm_bwd, self.attention_W, self.word_vocab = \
                 None, None, None, None, None, None, None, None, None, None
 
     @classmethod
-    def load_model(cls, model_file, vocab_file, timex_event_label_input):
-        classifier = cls(0, 0, 0, 0, 0, 0)
-        classifier.embeddings, classifier.timex_event_label_embeddings, \
+    def load_model(cls, model_file, vocab_file, TE_label_set):
+        classifier = cls(None, None, None, None, None, None)
+        classifier.embeddings, classifier.TE_label_embeddings, \
             classifier.pW1, classifier.pb1, classifier.pW2, \
             classifier.pb2, classifier.lstm_fwd, classifier.lstm_bwd,\
-            classifier.attention_w = \
+            classifier.attention_W = \
             classifier.model.load(model_file)
 
         classifier.size_edge_label = classifier.pb2.shape()[0]
-        if timex_event_label_input == 'none':
-            classifier.label_vocab = {}
-        elif timex_event_label_input == 'timex_event':
-            classifier.label_vocab = LABEL_VOCAB_TIMEX_EVENT
+        classifier.TE_label_set = TE_label_set
+
+        if TE_label_set == 'none':
+            classifier.TE_label_vocab = {}
+        elif TE_label_set == 'timex_event':
+            classifier.TE_label_vocab = LABEL_VOCAB_TIMEX_EVENT
         else:
-            classifier.label_vocab = LABEL_VOCAB_FULL
+            classifier.TE_label_vocab = LABEL_VOCAB_FULL
 
         with codecs.open(vocab_file, 'r', 'utf-8') as f:
-            classifier.vocab = json.load(f) 
+            classifier.word_vocab = json.load(f) 
 
         return classifier
 
-    def train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
-        self.online_train(training_data, dev_data, output_file, vocab_file, labeled, num_iter)
+    def train(self, training_data, dev_data, output_file, vocab_file,
+            labeled, num_iter=1000):
+        self.online_train(training_data, dev_data, output_file, vocab_file,
+                labeled, num_iter)
 
     def get_embeddings_for_document(self, snt_list, example_list):
-        """ Get word embeddings (concatenated with timex/event label embeddings if picked)
-        for bilstm input.
+        """ Get input embeddings (word embeddings, concatenated with 
+        timex/event label embeddings if selected) for bilstm input.
         """
 
         # build word list
         word_list = []
-        timex_event_label_list = []
+        TE_label_list = []
         for i, snt in enumerate(snt_list):
             for word in snt:
                 word_list.append(word)
-                timex_event_label_list.append('<UNK>')
+                TE_label_list.append('<UNK>')
 
-        # build timex/event label list
-        for example in example_list:
-            child = example[0][1]
-            for k in range(child.start_word_index_in_doc,
-                    child.end_word_index_in_doc + 1):
-                timex_event_label_list[k] = child.label
+        if self.TE_label_set == 'none':
+            return [self.embeddings[self.word_vocab.get(word, self.word_vocab['<UNK>'])]
+                for i, word in enumerate(word_list)]
 
-        return [dy.concatenate([
-            self.embeddings[self.vocab.get(word, self.vocab['<UNK>'])],
-            self.timex_event_label_embeddings[
-                self.label_vocab.get(timex_event_label_list[i],
-                    self.label_vocab['<UNK>'])]
-            ]) for i, word in enumerate(word_list)]
+        else:
+            # build timex/event label list
+            for example in example_list:
+                child = example[0][1]
+                for k in range(child.start_word_index_in_doc,
+                        child.end_word_index_in_doc + 1):
+                    if self.TE_label_set == 'timex_evet':
+                        TE_label_list[k] = child.label_timex_event 
+                    else:
+                        TE_label_list[k] = child.label_full
+
+            return [dy.concatenate([
+                self.embeddings[self.word_vocab.get(word, self.word_vocab['<UNK>'])],
+                self.TE_label_embeddings[
+                    self.TE_label_vocab.get(TE_label_list[i],
+                        self.TE_label_vocab['<UNK>'])]
+                ]) for i, word in enumerate(word_list)]
 
     def build_cg(self, snt_list, example_list):
         dy.renew_cg()
@@ -116,10 +126,11 @@ class Bilstm_Classifier:
         f_init = self.lstm_fwd.initial_state()
         b_init = self.lstm_bwd.initial_state()
 
-        word_embeddings = self.get_embeddings_for_document(snt_list, example_list)
+        input_embeddings = self.get_embeddings_for_document(
+            snt_list, example_list)
 
-        f_exps = f_init.transduce(word_embeddings)
-        b_exps = b_init.transduce(reversed(word_embeddings))
+        f_exps = f_init.transduce(input_embeddings)
+        b_exps = b_init.transduce(reversed(input_embeddings))
 
         self.bi_lstm = [dy.concatenate([f, b]) for f, b in 
             zip(f_exps, reversed(b_exps))]
@@ -129,25 +140,28 @@ class Bilstm_Classifier:
         self.W2 = dy.parameter(self.pW2)
         self.b2 = dy.parameter(self.pb2)
 
-    def online_train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
+    def online_train(self, training_data, dev_data, output_file, vocab_file,
+            labeled, num_iter=1000):
+        
         trainer = dy.AdamTrainer(self.model)
 
         dev_loss_inc_count = 0
         pre_dev_loss = 0
         min_dev_loss = sys.maxsize
+
         for i in range(num_iter):
             random.shuffle(training_data)
             closs = 0.0
             for snt_list, training_example_list in training_data:
-                #import pdb; pdb.set_trace()
                 self.build_cg(snt_list, training_example_list)
 
                 for example in training_example_list:
                     yhat = self.scores(example)
-                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
+                    loss = self.compute_loss(
+                        yhat, self.get_gold_y_index(example, labeled))
                     closs += loss.scalar_value()
                     loss.backward()
-                    trainer.update()
+                    trainer.update()    # online training
 
             # compute dev loss for early stopping
             dev_loss = 0.0
@@ -155,11 +169,15 @@ class Bilstm_Classifier:
                 self.build_cg(snt_list, dev_example_list)
                 for example in dev_example_list:
                     yhat = self.scores(example)
-                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
+                    loss = self.compute_loss(
+                        yhat, self.get_gold_y_index(example, labeled))
                     dev_loss += loss.scalar_value()
 
             print('# iter', i, end=': ')
-            print('loss on training = {}, loss on dev = {}'.format(closs, dev_loss))
+            print('loss on training = {}, loss on dev = {}'.format(
+                closs, dev_loss))
+            print('norm-loss on training = {}, norm-loss on dev = {}'.format(
+                closs / len(training_data), dev_loss / len(dev_data)))
 
             # early stopping
             if dev_loss > pre_dev_loss:
@@ -176,24 +194,25 @@ class Bilstm_Classifier:
             if dev_loss < min_dev_loss:
                 self.model.save(
                     output_file,
-                    [self.embeddings, self.timex_event_label_embeddings,
+                    [self.embeddings, self.TE_label_embeddings,
                         self.pW1, self.pb1, self.pW2, self.pb2,
-                        self.lstm_fwd, self.lstm_bwd, self.attention_w])
+                        self.lstm_fwd, self.lstm_bwd, self.attention_W])
 
             min_dev_loss = min(min_dev_loss, dev_loss)
 
         with codecs.open(vocab_file, 'w', 'utf-8') as f:
-            json.dump(self.vocab, f)
+            json.dump(self.word_vocab, f)
 
     def feat_nd_bin(self, p, c):
         vec = [0 for i in range(5)]
-        if c.index - p.index == 1:
+        if c.node_index_in_doc - p.node_index_in_doc == 1:
             vec[0] = 1
-        elif c.index - p.index > 1 and c.snt_id == p.snt_id:
+        elif c.node_index_in_doc - p.node_index_in_doc > 1 and \
+                c.snt_index_in_doc == p.snt_index_in_doc:
             vec[1] = 1
-        elif c.index - p.index > 1:
+        elif c.node_index_in_doc - p.node_index_in_doc > 1:
             vec[2] = 1
-        elif c.index - p.index < 1:
+        elif c.node_index_in_doc - p.node_index_in_doc < 1:
             vec[3] = 1
         else:
             vec[4] = 1
@@ -209,7 +228,8 @@ class Bilstm_Classifier:
             nd = dy.inputVector(self.feat_nd_bin(p, c))
 
             # feat: in same sentence
-            ss = dy.inputVector([1, 0] if p.snt_id == c.snt_id else [0, 1])
+            ss = dy.inputVector([1, 0] 
+                if p.snt_index_in_doc == c.snt_index_in_doc else [0, 1])
 
             # pair representation g
             g = dy.concatenate([
@@ -220,7 +240,7 @@ class Bilstm_Classifier:
                 self.attend(p), self.attend(c), nd, ss])
 
             hidden = dy.rectify(self.W1 * g + self.b1)
-            hidden = dy.dropout(hidden, 0.3)
+            hidden = dy.dropout(hidden, 0.5)
             scores = self.W2 * hidden + self.b2
             out_list.append(scores)
 
@@ -240,15 +260,17 @@ class Bilstm_Classifier:
         '''attention mechanism to return a weighted sum of bilstm vectors
         of all words in node '''
 
-        if node.snt_id == -1:   # if node is a pre-defined meta node
+        if node.snt_index_in_doc == -1: # if node is a pre-defined meta node
             return self.bi_lstm[node.start_word_index_in_doc]
 
         #print(node.start_word_index_in_doc, node.end_word_index_in_doc)
+
         vectors = self.bi_lstm[
-                node.start_word_index_in_doc:node.end_word_index_in_doc + 1]
+            node.start_word_index_in_doc:node.end_word_index_in_doc + 1]
+        
         input_mat = dy.concatenate_cols(vectors)
 
-        attn_w = dy.parameter(self.attention_w)
+        attn_w = dy.parameter(self.attention_W)
 
         unnormalized = dy.transpose(dy.rectify(attn_w * input_mat))
         att_weights = dy.softmax(unnormalized)
@@ -307,8 +329,3 @@ class Bilstm_Classifier:
         # end debug
 
         return [(yhat, 0)]
-
-    def label_one_hot(self, label):
-        vec = [0 for key in self.self.label_vocab]
-        vec[self.label_vocab[label]] = 1
-        return dy.inputVector(vec)
