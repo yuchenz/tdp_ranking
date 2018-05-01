@@ -23,7 +23,7 @@ class Node:
             str(start_word_index_in_snt), str(end_word_index_in_snt)])
 
     def __str__(self):
-        return '\t'.join([self.ID, self.words, self.label])
+        return '\t'.join([self.ID, self.words, self.full_label])
 
 
 LABEL_VOCAB_FULL = {

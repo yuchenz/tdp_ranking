@@ -322,10 +322,8 @@ class Bilstm_Classifier:
         yhat_list = sorted(enumerate(self.scores(example).npvalue()),
             key=operator.itemgetter(1), reverse=True)
 
-        yhat = self.yhat_index_to_yhat(yhat_list[0][0], example, labeled)
+        yhat_list = [
+            (self.yhat_index_to_yhat(yhat[0], example, labeled), yhat[1])
+            for yhat in yhat_list]
 
-        # for debug
-        #print('predicted:\t', yhat[0], '\t', yhat[1], '\t', yhat[2])
-        # end debug
-
-        return [(yhat, 0)]
+        return yhat_list 

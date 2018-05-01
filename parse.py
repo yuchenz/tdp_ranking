@@ -47,8 +47,53 @@ def output_parse(edge_list, snt_list, output_file):
         f.write(
             'SNT_LIST\n' + text + '\n' + 'EDGE_LIST\n' + edge_text + '\n\n')
 
+def is_cyclic(yhat, offspring_dict):
+    candidate = yhat[0].ID
+    child = yhat[1].ID
+
+    #print('check candidate', candidate, 'and child', child)
+
+    if child not in offspring_dict:
+        #print(child, 'not in offspring_dict')
+        return False 
+    elif candidate not in offspring_dict[child]:
+        #print(candidate, 'not in offspring_dict[', child, ']')
+        return False 
+    else:
+        #print(candidate, 'is in offspring_dict[', child, '], Cyclic!!')
+        return True 
+
+def update_dict_w_new_edge(offspring_dict, parent_dict, yhat):
+    parent = yhat[0].ID
+    child = yhat[1].ID
+
+    #print("\nadd edge: parent", parent, "to child", child)
+
+    parent_dict[child] = parent
+    offspring_dict[parent] = offspring_dict.get(parent, {})
+    offspring_dict[parent].update({child:None})
+    offspring_dict[parent].update(offspring_dict.get(child, {}))
+    
+    #k = 0
+    #while parent in parent_dict and k < 100:
+    while parent in parent_dict:
+        #k += 1
+        #print(parent, end=' ')
+        parent = parent_dict[parent]
+        offspring_dict[parent] = offspring_dict.get(parent, {})
+        offspring_dict[parent].update({child:None})
+        offspring_dict[parent].update(offspring_dict.get(child, {}))
+    #print(parent, '\n')
+    #print("parent_dict:\n", parent_dict)
+    #print("offspring_dict:\n", offspring_dict)
+    #if k >= 100:
+    #    print("ERROR!!!")
+    #print()
+
 def decode(test_data, classifier, output_file, labeled, TE_label_set):
     i = 0
+    offspring_dict = {}
+    parent_dict = {}
     for snt_list, test_instance_list in test_data:
         print('parsing doc {} ...'.format(i))
         i += 1
@@ -57,7 +102,21 @@ def decode(test_data, classifier, output_file, labeled, TE_label_set):
             yhat_list = classifier.predict(
                 snt_list, test_instance_list, instance, labeled)
 
-            yhat = yhat_list[0][0]
+            # make sure the new edge doesn't add a cycle in the final tree
+            j = 0
+            while j < len(yhat_list):
+                if not is_cyclic(yhat_list[j][0], offspring_dict):
+                    break
+                j += 1
+
+            assert j < len(yhat_list), "No acyclic edges!!!"
+
+            # update offspring_dict and parent_dict 
+            # to include the newly added edge
+            update_dict_w_new_edge(
+                offspring_dict, parent_dict, yhat_list[j][0])
+
+            yhat = yhat_list[j][0]
             #print([[y[0][0].ID, y[0][1].ID, y[1]] for y in yhat_list])
             #print(yhat)
 
@@ -70,6 +129,7 @@ def decode(test_data, classifier, output_file, labeled, TE_label_set):
 
             edge = '\t'.join([yhat[1].ID, label, yhat[0].ID, yhat[2]])
             edge_list.append(edge)
+
 
         output_parse(edge_list, snt_list, output_file)
 
