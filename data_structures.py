@@ -14,8 +14,8 @@ class Node:
         self.end_word_index_in_doc = end_word_index_in_doc
 
         self.words = words
-        self.label_full = label
-        self.label_timex_event = label.split('-')[0]
+        self.full_label = label # full label
+        self.TE_label = label.split('-')[0] # timex/event label
 
         self.parent = None
         self.children = []

@@ -109,9 +109,9 @@ class Bilstm_Classifier:
                 for k in range(child.start_word_index_in_doc,
                         child.end_word_index_in_doc + 1):
                     if self.TE_label_set == 'timex_evet':
-                        TE_label_list[k] = child.label_timex_event 
+                        TE_label_list[k] = child.TE_label
                     else:
-                        TE_label_list[k] = child.label_full
+                        TE_label_list[k] = child.full_label
 
             return [dy.concatenate([
                 self.embeddings[self.word_vocab.get(word, self.word_vocab['<UNK>'])],

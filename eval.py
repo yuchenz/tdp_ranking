@@ -1,5 +1,5 @@
-import codecs
 import sys
+import codecs
 import argparse
 
 
@@ -31,54 +31,21 @@ def readin_tuples(filename):
 
     return edge_tuples
 
-def unlabeled_eval(gold_tuples, auto_tuples):
+def get_labeled_tups(tups):
+    tups = set([(tup[0], tup[1], tup[2]) for tup in tups])
+    return tups
+
+def get_unlabeled_tups(tups):
+    tups = set([(tup[0], tup[1]) for tup in tups])
+    return tups
+
+def eval_(gold_tuples, auto_tuples, get_tups):
     counts = []
     scores = []
 
     for i, (gtups, atups) in enumerate(zip(gold_tuples, auto_tuples)):
-        gtups = set([(gtup[0], gtup[1]) for gtup in gtups])
-        atups = set([(atup[0], atup[1]) for atup in atups])
-
-        true_positive = len(gtups.intersection(atups))
-        false_positive = len(atups.difference(gtups))
-        false_negative = len(gtups.difference(atups))
-
-        print('test doc {}: true_p = {}, false_p = {}, false_n = {}'.format(
-            i, true_positive, false_positive, false_negative)) 
-        p = true_positive / (true_positive + false_positive)
-        r = true_positive / (true_positive + false_negative)
-        f = 2 * p * r / (p + r) if p + r != 0 else 0
-
-        counts.append((true_positive, false_positive, false_negative))
-        scores.append((p, r, f))
-
-    # macro average
-    p = sum([score[0] for score in scores]) / len(scores)
-    r = sum([score[1] for score in scores]) / len(scores)
-    f = sum([score[2] for score in scores]) / len(scores)
-
-    #print('macro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
-    print('macro average: f = {:.3f}'.format(f), end='; ')
-
-    # micro average
-    true_p = sum([count[0] for count in counts])
-    false_p = sum([count[1] for count in counts])
-    false_n = sum([count[2] for count in counts])
-
-    p = true_p / (true_p + false_p)
-    r = true_p / (true_p + false_n)
-    f = 2 * p * r / (p + r) if p + r != 0 else 0
-
-    #print('micro average: p = {:.3f}, r = {:.3f}, f = {:.3f}'.format(p, r, f))
-    print('micro average: f = {:.3f}'.format(f))
-
-def labeled_eval(gold_tuples, auto_tuples):
-    counts = []
-    scores = []
-
-    for i, (gtups, atups) in enumerate(zip(gold_tuples, auto_tuples)):
-        gtups = set([(gtup[0], gtup[1], gtup[2]) for gtup in gtups])
-        atups = set([(atup[0], atup[1], atup[2]) for atup in atups])
+        gtups = get_tups(gtups)
+        atups = get_tups(atups)
 
         true_positive = len(gtups.intersection(atups))
         false_positive = len(atups.difference(gtups))
@@ -122,6 +89,6 @@ if __name__ == '__main__':
     auto_tuples = readin_tuples(args.parsed_file)
 
     if args.labeled:
-        labeled_eval(gold_tuples, auto_tuples)
+        eval_(gold_tuples, auto_tuples, get_labeled_tups)
     else:
-        unlabeled_eval(gold_tuples, auto_tuples)
+        eval_(gold_tuples, auto_tuples, get_unlabeled_tups)
