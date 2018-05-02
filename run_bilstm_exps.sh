@@ -2,18 +2,20 @@
 ##  parameter settings  ## 
 ##########################
 
-data_dir=../all_annotated_data
-train_file_stem=all_news.train
-dev_file_stem=all_news.dev
-train_file=$data_dir/$train_file_stem
-dev_file=$data_dir/$dev_file_stem
-test_file=$data_dir/all_news.test
-
 exp_id=$1
 iter=$2
-test_dev_file=$3
-test_test_file=$4
-labeled=$5
+
+data_dir=../all_annotated_data
+
+train_file_stem=$3
+dev_file_stem=$4
+train_file=$data_dir/$train_file_stem
+dev_file=$data_dir/$dev_file_stem
+
+test_dev_file=$dev_file
+test_test_file=$data_dir/$5
+
+labeled=$6
 
 if [ $labeled == "--labeled" ];
 then
