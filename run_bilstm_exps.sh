@@ -12,13 +12,13 @@ dev_file_stem=$4
 train_file=$data_dir/$train_file_stem
 dev_file=$data_dir/$dev_file_stem
 
-test_dev_file=$dev_file
-test_test_file=$data_dir/$5
+test_dev_file=$data_dir/$5
+test_test_file=$data_dir/$6
 
 eval_dev_file=$data_dir/all_news.dev
 eval_test_file=$data_dir/all_news.test
 
-labeled=$6
+labeled=$7
 
 if [ $labeled == "--labeled" ];
 then
