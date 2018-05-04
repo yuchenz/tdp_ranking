@@ -129,7 +129,7 @@ class Bilstm_Classifier:
 
                 for example in training_example_list:
                     yhat = self.scores(example)
-                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
+                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled), example)
                     closs += loss.scalar_value()
                     loss.backward()
                     trainer.update()
@@ -140,7 +140,7 @@ class Bilstm_Classifier:
                 self.build_cg(snt_list, dev_example_list)
                 for example in dev_example_list:
                     yhat = self.scores(example)
-                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
+                    loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled), example)
                     dev_loss += loss.scalar_value()
 
             print('# iter', i, end=': ')
@@ -219,8 +219,13 @@ class Bilstm_Classifier:
 
         return out_list.index(1) 
 
-    def compute_loss(self, yhat, gold_y_index):
-        return -dy.log(dy.pick(dy.softmax(yhat), gold_y_index))
+    def compute_loss(self, yhat, gold_y_index, example):
+        for tup in example:
+            p, c, label = tup
+            if label != 'NO_EDGE':
+                distance = abs(p.index - c.index)
+                
+        return -dy.log(dy.pick(dy.softmax(yhat), gold_y_index) * (1.0 / distance))
 
     def yhat_index_to_yhat(self, yhat_index, example, labeled):
         example_index = int(yhat_index / self.size_edge_label)
