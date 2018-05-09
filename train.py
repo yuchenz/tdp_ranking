@@ -21,7 +21,7 @@ def get_arg_parser():
     arg_parser.add_argument("--size_embed", help="word embedding size for bi-lstm model",
         default=32)
     arg_parser.add_argument("--size_timex_event_label_embed",
-        help="timex/event label embedding size for bi-lstm model", default=16)
+        help="timex/event label embedding size for bi-lstm model", default=4)
     arg_parser.add_argument("--size_lstm", help="single lstm vector size for bi-lstm model",
         default=32)
     arg_parser.add_argument("--size_hidden",
