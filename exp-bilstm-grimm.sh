@@ -1,12 +1,12 @@
 data_dir=../all_annotated_data
-train_train_file=all_news.train
-train_dev_file=all_news.dev
+train_train_file=grimm.train
+train_dev_file=grimm.dev
 
-test_dev_file=all_news.dev.bilstm-20180124-0.auto_labeled
-test_test_file=all_news.test.bilstm-20180124-0.auto_labeled
+test_dev_file=grimm.dev.stage1-out-20180509-3
+test_test_file=grimm.test.stage1-out-20180509-3
 
 eval_dev_file=$train_dev_file
-eval_test_file=all_news.test
+eval_test_file=grimm.test
 
 exp_id=$1
 iter=$2
