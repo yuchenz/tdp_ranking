@@ -52,6 +52,7 @@ class Bilstm_Classifier:
             self.attention_w = self.model.add_parameters((1, size_lstm * 2))
 
             self.vocab = vocab
+            self.size_lstm = size_lstm
         else:
             self.embeddings, self.timex_event_label_embeddings, \
                 self.pW1, self.pb1, self.pW2, self.pb2, \
@@ -77,6 +78,8 @@ class Bilstm_Classifier:
 
         with codecs.open(vocab_file, 'r', 'utf-8') as f:
             classifier.vocab = json.load(f) 
+
+        classifier.size_lstm = int(classifier.attention_w.shape()[1] / 2)
 
         return classifier
 
@@ -248,16 +251,33 @@ class Bilstm_Classifier:
 
         # build attention on a larger context
         # +/- n words around the current timex/event
-        # n = 1
-        if node.start_word_index_in_doc == 0:
-            vectors.insert(0, [0 for i in range(size_lstm * 2)])
+        # n = 2
+        if node.start_word_index_in_doc <= 0:
+            vectors.insert(0, 
+                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
         else:
             vectors.insert(0, self.bi_lstm[node.start_word_index_in_doc - 1])
 
-        if node.end_word_index_in_doc == len(self.bi_lstm) - 1:
-            vectors.append([0 for i in range(size_lstm * 2)])
+        if node.start_word_index_in_doc <= 1:
+            vectors.insert(0,
+                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
+        else:
+            vectors.insert(0, self.bi_lstm[node.start_word_index_in_doc - 2])
+
+        if node.end_word_index_in_doc >= len(self.bi_lstm) - 1:
+            vectors.append(
+                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
         else:
             vectors.append(self.bi_lstm[node.end_word_index_in_doc + 1])
+
+        if node.end_word_index_in_doc >= len(self.bi_lstm) - 2:
+            vectors.append(
+                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
+            #print(node.start_word_index_in_doc, node.end_word_index_in_doc)
+            #print(len(self.bi_lstm))
+            #print(self.size_lstm)
+        else:
+            vectors.append(self.bi_lstm[node.end_word_index_in_doc + 2])
 
         input_mat = dy.concatenate_cols(vectors)
 
