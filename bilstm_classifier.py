@@ -251,33 +251,18 @@ class Bilstm_Classifier:
 
         # build attention on a larger context
         # +/- n words around the current timex/event
-        # n = 2
+        # n = 1
         if node.start_word_index_in_doc <= 0:
             vectors.insert(0, 
                 dy.inputVector([0 for i in range(self.size_lstm * 2)]))
         else:
             vectors.insert(0, self.bi_lstm[node.start_word_index_in_doc - 1])
 
-        if node.start_word_index_in_doc <= 1:
-            vectors.insert(0,
-                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
-        else:
-            vectors.insert(0, self.bi_lstm[node.start_word_index_in_doc - 2])
-
         if node.end_word_index_in_doc >= len(self.bi_lstm) - 1:
             vectors.append(
                 dy.inputVector([0 for i in range(self.size_lstm * 2)]))
         else:
             vectors.append(self.bi_lstm[node.end_word_index_in_doc + 1])
-
-        if node.end_word_index_in_doc >= len(self.bi_lstm) - 2:
-            vectors.append(
-                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
-            #print(node.start_word_index_in_doc, node.end_word_index_in_doc)
-            #print(len(self.bi_lstm))
-            #print(self.size_lstm)
-        else:
-            vectors.append(self.bi_lstm[node.end_word_index_in_doc + 2])
 
         input_mat = dy.concatenate_cols(vectors)
 
