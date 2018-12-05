@@ -83,7 +83,7 @@ class LogReg_Classifier:
             else:
                 dev_loss_inc_count = 0
             # if 2 consecutive iters have increasing dev loss, then break
-            if dev_loss_inc_count > 2:
+            if dev_loss_inc_count > 3:
                 break
             else:
                 pre_dev_loss = dev_loss
