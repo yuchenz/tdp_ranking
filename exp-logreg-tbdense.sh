@@ -1,5 +1,5 @@
 data_dir=../crowd_sourcing/crowd_sourced_data/
-train_train_file=timebank-dense.yuchen-tdt.train
+train_train_file=timebank-all_tb-dense-train.tdt
 train_dev_file=timebank-dense.yuchen-tdt.dev
 
 test_dev_file=timebank-dense.yuchen-tdt.dev
