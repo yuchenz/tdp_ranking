@@ -7,7 +7,7 @@ iter=$2
 
 data_dir=../crowd_sourcing/crowd_sourced_data/
 
-train_file_stem=timebank-dense.yuchen-tdt.train
+train_file_stem=timebank-all_tb-dense-train.tdt
 dev_file_stem=timebank-dense.yuchen-tdt.dev
 train_file=$data_dir/$train_file_stem
 dev_file=$data_dir/$dev_file_stem
