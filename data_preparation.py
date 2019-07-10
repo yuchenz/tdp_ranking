@@ -106,9 +106,12 @@ def make_one_doc_training_data(doc, vocab, timex_event_label_input):
                     example.append((p_node, c_node, 'NO_EDGE'))
 
         if not check_example_contains_1(example):
-            print('ERROR! no gold parent in this example!!!')
-            #pdb.set_trace()
-            exit(1)
+            print('WARNING! no gold parent in this example!!!')
+
+            # if the gold parent is not in the window
+            # link it to root
+            example.remove((root_node, c_node, 'NO_EDGE'))
+            example.append((root_node, c_node, 'Depend-on'))
 
         training_example_list.append(example)
 
