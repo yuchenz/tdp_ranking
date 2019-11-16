@@ -51,4 +51,11 @@ if __name__ == '__main__':
             args.size_hidden, args.timex_event_label_input,
             args.size_timex_event_label_embed, size_edge_label)
 
-    classifier.train(training_data, dev_data, args.model_file, vocab_file, args.labeled, args.iter)
+    with open(args.train_file + '.bert_in.bert_out.jsonl') as f:
+        BERT_train = f.readlines()
+
+    with open(args.dev_file + '.bert_in.bert_out.jsonl') as f:
+        BERT_dev = f.readlines()
+
+    classifier.train(training_data, dev_data, args.model_file, vocab_file,\
+            args.labeled, BERT_train, BERT_dev, args.iter)

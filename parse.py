@@ -42,14 +42,19 @@ def output_parse(edge_list, snt_list, output_file):
         edge_text = '\n'.join(edge_list)
         f.write('SNT_LIST\n' + text + '\n' + 'EDGE_LIST\n' + edge_text + '\n\n')
 
-def decode(test_data, classifier, output_file, labeled):
+def decode(test_data, classifier, output_file, labeled, BERT_test):
     i = 0
-    for snt_list, test_instance_list in test_data:
+
+    test_data_with_BERT = zip(test_data, BERT_test)
+    
+    for test_doc, BERT_line in test_data_with_BERT:
+        snt_list, test_instance_list = test_doc 
         print('parsing doc {} ...'.format(i))
         i += 1
         edge_list = []
         for instance in test_instance_list:
-            yhat_list = classifier.predict(snt_list, test_instance_list, instance, labeled)
+            yhat_list = classifier.predict(snt_list, test_instance_list,\
+                    instance, labeled, BERT_line)
 
             yhat = yhat_list[0][0]
             #print([[y[0][0].ID, y[0][1].ID, y[1]] for y in yhat_list])
@@ -80,4 +85,7 @@ if __name__ == '__main__':
     elif args.classifier == 'bi_lstm':
         classifier = Bilstm_Classifier.load_model(args.model_file, args.vocab_file, args.timex_event_label_input)
 
-    decode(test_data, classifier, args.parsed_file, args.labeled)
+    with open(args.test_file + '.bert_in.bert_out.jsonl') as f:
+        BERT_test = f.readlines()
+
+    decode(test_data, classifier, args.parsed_file, args.labeled, BERT_test)

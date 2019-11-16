@@ -83,8 +83,10 @@ class Bilstm_Classifier:
 
         return classifier
 
-    def train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
-        self.online_train(training_data, dev_data, output_file, vocab_file, labeled, num_iter)
+    def train(self, training_data, dev_data, output_file, vocab_file, labeled,
+            bert_train, bert_dev, num_iter=1000):
+        self.online_train(training_data, dev_data, output_file, vocab_file, labeled,
+                bert_train, bert_dev, num_iter)
 
     def get_embeddings_for_document(self, snt_list, example_list):
         """ Get word embeddings (concatenated with timex/event label embeddings if picked)
@@ -113,7 +115,33 @@ class Bilstm_Classifier:
                     self.label_vocab['<UNK>'])]
             ]) for i, word in enumerate(word_list)]
 
-    def build_cg(self, snt_list, example_list):
+    def load_BERT(bert_filename):
+        with open(bert_filename, 'r') as f:
+            self.bert_line_list = f.readlines()
+
+    def get_embeddings_BERT(snt_list, BERT_line):
+        BERT_dict = json.loads(BERT_line)
+
+        BERT_embd_list = []
+
+        char_BERT_list = BERT_dict['features'][1:-1]
+        index = 0
+        for word in [word for snt in snt_list for word in snt]:
+
+            num_char = len(word)
+            word_char_BERT_list = char_BERT_list[index:index+num_char]
+            index += num_char
+
+            for char_and_layers in word_char_BERT_list:
+                layer_1 = filter((lambda x: x['index'] == -1), char_and_layers['layers'])
+                
+                char_embd_list.append(dy.inputVector(layer_1['values']))
+
+            BERT_embd_list.append(dy.max_dim(char_embd_list))
+
+        return BERT_embd_list
+
+    def build_cg(self, snt_list, example_list, BERT_line):
         dy.renew_cg()
 
         f_init = self.lstm_fwd.initial_state()
@@ -121,29 +149,35 @@ class Bilstm_Classifier:
 
         word_embeddings = self.get_embeddings_for_document(snt_list, example_list)
 
+        BERT_embeddings = self.get_embeddings_BERT(snt_list, BERT_line)
+
         f_exps = f_init.transduce(word_embeddings)
         b_exps = b_init.transduce(reversed(word_embeddings))
 
-        self.bi_lstm = [dy.concatenate([f, b]) for f, b in 
-            zip(f_exps, reversed(b_exps))]
+        self.bi_lstm = [dy.concatenate([f, b, BERT]) for f, b, BERT in 
+            zip(f_exps, reversed(b_exps), BERT_embeddings)]
 
         self.W1 = dy.parameter(self.pW1)
         self.b1 = dy.parameter(self.pb1)
         self.W2 = dy.parameter(self.pW2)
         self.b2 = dy.parameter(self.pb2)
 
-    def online_train(self, training_data, dev_data, output_file, vocab_file, labeled, num_iter=1000):
+    def online_train(self, training_data, dev_data, output_file, vocab_file, labeled,
+            bert_train, bert_dev, num_iter=1000):
+
         trainer = dy.AdamTrainer(self.model)
 
         dev_loss_inc_count = 0
         pre_dev_loss = 0
         min_dev_loss = sys.maxsize
         for i in range(num_iter):
-            random.shuffle(training_data)
+            training_data_with_BERT = zip(training_data, bert_train)
+            random.shuffle(training_data_with_BERT)
             closs = 0.0
-            for snt_list, training_example_list in training_data:
+            for training_doc, BERT_line in training_data_with_BERT:
+                snt_list, training_example_list = training_doc
                 #import pdb; pdb.set_trace()
-                self.build_cg(snt_list, training_example_list)
+                self.build_cg(snt_list, training_example_list, BERT_line)
 
                 for example in training_example_list:
                     yhat = self.scores(example)
@@ -154,8 +188,10 @@ class Bilstm_Classifier:
 
             # compute dev loss for early stopping
             dev_loss = 0.0
-            for snt_list, dev_example_list in dev_data:
-                self.build_cg(snt_list, dev_example_list)
+            dev_data_with_BERT = zip(dev_data, bert_dev)
+            for dev_doc, BERT_line in dev_data_with_BERT:
+                snt_list, dev_example_list = dev_doc
+                self.build_cg(snt_list, dev_example_list, BERT_line)
                 for example in dev_example_list:
                     yhat = self.scores(example)
                     loss = self.compute_loss(yhat, self.get_gold_y_index(example, labeled))
@@ -328,8 +364,8 @@ class Bilstm_Classifier:
 
         return yhat
 
-    def predict(self, snt_list, example_list, example, labeled):
-        self.build_cg(snt_list, example_list)
+    def predict(self, snt_list, example_list, example, labeled, BERT_line):
+        self.build_cg(snt_list, example_list, BERT_line)
         yhat_list = sorted(enumerate(self.scores(example).npvalue()),
             key=operator.itemgetter(1), reverse=True)
 
