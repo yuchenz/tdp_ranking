@@ -126,20 +126,25 @@ class Bilstm_Classifier:
         BERT_embd_list = []
 
         char_BERT_list = BERT_dict['features'][1:]
+        print('char_BERT_list len:', len(char_BERT_list))
         word_list = [word for snt in snt_list for word in snt]
+        print('word_list len:', len(word_list))
 
         index = 0
         for word in word_list:
+            print('word in snt:', word)
 
             num_char = len(word)
             assert num_char > 0 
             word_char_BERT_list = char_BERT_list[index:index+num_char]
+            print(len(char_BERT_list), index, index+num_char, len(word_char_BERT_list))
             
             char_embd_list = []
             i = 0
             chars_left = num_char
             while chars_left > 0:
                 char_and_layers = char_BERT_list[index+i]
+                print('char in BERT:', char_and_layers['token'])
                 c = char_and_layers['token']
                 c = c[2:] if c[0:2] == '##' else c
                 layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
@@ -149,6 +154,11 @@ class Bilstm_Classifier:
                 chars_left -= len(c)
 
             index += i
+            #print('layer_1 dim = ', char_embd_list[0].dim())
+            #res1 = dy.concatenate(char_embd_list, d=1)
+            #print('res1 dim = ', res1.dim())
+            #res2 = dy.max_dim(res1, d=1)
+            #print('res2 dim = ', res2.dim())
             BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list, d=1), d=1))
 
         return BERT_embd_list
@@ -166,8 +176,14 @@ class Bilstm_Classifier:
         f_exps = f_init.transduce(word_embeddings)
         b_exps = b_init.transduce(reversed(word_embeddings))
 
+        #print("f_exps dim = ", f_exps[0].dim())
+        #print("b_exps dim = ", b_exps[0].dim())
+        #print("BERT_embeddings dim = ", BERT_embeddings[0].dim())
+
         self.bi_lstm = [dy.concatenate([f, b, BERT]) for f, b, BERT in 
             zip(f_exps, reversed(b_exps), BERT_embeddings)]
+
+        print('bi_lstm_size = ', self.bi_lstm[0].dim())
 
         self.W1 = dy.parameter(self.pW1)
         self.b1 = dy.parameter(self.pb1)
