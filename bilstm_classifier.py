@@ -119,25 +119,34 @@ class Bilstm_Classifier:
         with open(bert_filename, 'r') as f:
             self.bert_line_list = f.readlines()
 
-    def get_embeddings_BERT(snt_list, BERT_line):
+    def get_embeddings_BERT(self, snt_list, BERT_line):
         BERT_dict = json.loads(BERT_line)
 
         BERT_embd_list = []
 
-        char_BERT_list = BERT_dict['features'][1:-1]
+        char_BERT_list = BERT_dict['features'][1:]
+        print('char_BERT_list len:', len(char_BERT_list))
+        word_list = [word for snt in snt_list for word in snt]
+        print('word_list len:', len(word_list))
+
         index = 0
-        for word in [word for snt in snt_list for word in snt]:
+        for word in word_list:
+            print('word in snt:', word)
 
             num_char = len(word)
+            assert num_char > 0 
             word_char_BERT_list = char_BERT_list[index:index+num_char]
+            print(len(char_BERT_list), index, index+num_char, len(word_char_BERT_list))
             index += num_char
-
+            
+            char_embd_list = []
             for char_and_layers in word_char_BERT_list:
-                layer_1 = filter((lambda x: x['index'] == -1), char_and_layers['layers'])
-                
+                print('char in BERT:', char_and_layers['token'])
+                layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
+
                 char_embd_list.append(dy.inputVector(layer_1['values']))
 
-            BERT_embd_list.append(dy.max_dim(char_embd_list))
+            BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list)))
 
         return BERT_embd_list
 
@@ -171,8 +180,8 @@ class Bilstm_Classifier:
         pre_dev_loss = 0
         min_dev_loss = sys.maxsize
         for i in range(num_iter):
-            training_data_with_BERT = zip(training_data, bert_train)
-            random.shuffle(training_data_with_BERT)
+            training_data_with_BERT = list(zip(training_data, bert_train))
+            #random.shuffle(training_data_with_BERT)
             closs = 0.0
             for training_doc, BERT_line in training_data_with_BERT:
                 snt_list, training_example_list = training_doc
@@ -188,7 +197,7 @@ class Bilstm_Classifier:
 
             # compute dev loss for early stopping
             dev_loss = 0.0
-            dev_data_with_BERT = zip(dev_data, bert_dev)
+            dev_data_with_BERT = list(zip(dev_data, bert_dev))
             for dev_doc, BERT_line in dev_data_with_BERT:
                 snt_list, dev_example_list = dev_doc
                 self.build_cg(snt_list, dev_example_list, BERT_line)

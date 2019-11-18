@@ -2,6 +2,7 @@ import sys
 import os
 import codecs
 import argparse
+import gzip
 from data_preparation import make_test_data
 from logistic_regression_classifier import LogReg_Classifier
 from baseline_classifier import Baseline_Classifier
@@ -45,7 +46,7 @@ def output_parse(edge_list, snt_list, output_file):
 def decode(test_data, classifier, output_file, labeled, BERT_test):
     i = 0
 
-    test_data_with_BERT = zip(test_data, BERT_test)
+    test_data_with_BERT = list(zip(test_data, BERT_test))
     
     for test_doc, BERT_line in test_data_with_BERT:
         snt_list, test_instance_list = test_doc 
@@ -85,7 +86,7 @@ if __name__ == '__main__':
     elif args.classifier == 'bi_lstm':
         classifier = Bilstm_Classifier.load_model(args.model_file, args.vocab_file, args.timex_event_label_input)
 
-    with open(args.test_file + '.bert_in.bert_out.jsonl') as f:
+    with gzip.open(args.test_file + '.bert_in.bert_out.jsonl.gz', 'rt') as f:
         BERT_test = f.readlines()
 
     decode(test_data, classifier, args.parsed_file, args.labeled, BERT_test)
