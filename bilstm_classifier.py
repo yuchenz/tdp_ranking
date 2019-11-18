@@ -42,14 +42,15 @@ class Bilstm_Classifier:
                     1, size_embed + size_timex_event_label_embed,
                     size_lstm, self.model)
 
+            self.BERT_size = 768    # WARNING: IF YOU CHANGE THIS, ALSO CHANGE IN load_model
             self.pW1 = self.model.add_parameters(
-                    (size_hidden, 12 * size_lstm + 5 + 2))
+                    (size_hidden, 6 * (2 * size_lstm + self.BERT_size) + 5 + 2))
             self.pb1 = self.model.add_parameters(size_hidden)
             self.pW2 = self.model.add_parameters(
                     (size_edge_label, size_hidden))
             self.pb2 = self.model.add_parameters(size_edge_label)
 
-            self.attention_w = self.model.add_parameters((1, size_lstm * 2))
+            self.attention_w = self.model.add_parameters((1, size_lstm * 2 + self.BERT_size))
 
             self.vocab = vocab
             self.size_lstm = size_lstm
@@ -79,7 +80,7 @@ class Bilstm_Classifier:
         with codecs.open(vocab_file, 'r', 'utf-8') as f:
             classifier.vocab = json.load(f) 
 
-        classifier.size_lstm = int(classifier.attention_w.shape()[1] / 2)
+        classifier.size_lstm = int((classifier.attention_w.shape()[1] - 768) / 2)
 
         return classifier
 
@@ -137,16 +138,28 @@ class Bilstm_Classifier:
             assert num_char > 0 
             word_char_BERT_list = char_BERT_list[index:index+num_char]
             print(len(char_BERT_list), index, index+num_char, len(word_char_BERT_list))
-            index += num_char
             
             char_embd_list = []
-            for char_and_layers in word_char_BERT_list:
+            i = 0
+            chars_left = num_char
+            while chars_left > 0:
+                char_and_layers = char_BERT_list[index+i]
                 print('char in BERT:', char_and_layers['token'])
+                c = char_and_layers['token']
+                c = c[2:] if c[0:2] == '##' else c
                 layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
 
                 char_embd_list.append(dy.inputVector(layer_1['values']))
+                i += 1
+                chars_left -= len(c)
 
-            BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list)))
+            index += i
+            print('layer_1 dim = ', char_embd_list[0].dim())
+            res1 = dy.concatenate(char_embd_list, d=1)
+            print('res1 dim = ', res1.dim())
+            res2 = dy.max_dim(res1, d=1)
+            print('res2 dim = ', res2.dim())
+            BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list, d=1), d=1))
 
         return BERT_embd_list
 
@@ -163,8 +176,15 @@ class Bilstm_Classifier:
         f_exps = f_init.transduce(word_embeddings)
         b_exps = b_init.transduce(reversed(word_embeddings))
 
+        print("f_exps dim = ", f_exps[0].dim())
+        print("b_exps dim = ", b_exps[0].dim())
+        print("BERT_embeddings dim = ", BERT_embeddings[0].dim())
+
         self.bi_lstm = [dy.concatenate([f, b, BERT]) for f, b, BERT in 
+        #self.bi_lstm = [dy.concatenate([f, b]) for f, b, BERT in 
             zip(f_exps, reversed(b_exps), BERT_embeddings)]
+
+        print('bi_lstm_size = ', self.bi_lstm[0].dim())
 
         self.W1 = dy.parameter(self.pW1)
         self.b1 = dy.parameter(self.pb1)
@@ -299,25 +319,25 @@ class Bilstm_Classifier:
         # n = 2
         if node.start_word_index_in_doc <= 0:
             vectors.insert(0, 
-                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
+                dy.inputVector([0 for i in range(self.size_lstm * 2 + self.BERT_size)]))
         else:
             vectors.insert(0, self.bi_lstm[node.start_word_index_in_doc - 1])
 
         if node.start_word_index_in_doc <= 1:
             vectors.insert(0,
-                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
+                dy.inputVector([0 for i in range(self.size_lstm * 2 + self.BERT_size)]))
         else:
             vectors.insert(0, self.bi_lstm[node.start_word_index_in_doc - 2])
 
         if node.end_word_index_in_doc >= len(self.bi_lstm) - 1:
             vectors.append(
-                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
+                dy.inputVector([0 for i in range(self.size_lstm * 2 + self.BERT_size)]))
         else:
             vectors.append(self.bi_lstm[node.end_word_index_in_doc + 1])
 
         if node.end_word_index_in_doc >= len(self.bi_lstm) - 2:
             vectors.append(
-                dy.inputVector([0 for i in range(self.size_lstm * 2)]))
+                dy.inputVector([0 for i in range(self.size_lstm * 2 + self.BERT_size)]))
             #print(node.start_word_index_in_doc, node.end_word_index_in_doc)
             #print(len(self.bi_lstm))
             #print(self.size_lstm)

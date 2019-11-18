@@ -42,7 +42,6 @@ vocab_file=models/${train_file_stem}.neural-BERT-model.${exp_id}.vocab
 echo training ...
 python -u train.py --train_file $train_file --dev_file $dev_file --model_file $model_file --iter $iter --classifier bi_lstm $labeled 
 
-: <<'END'
 ###########################################
 ##  parse and evaluate on training data  ##  
 ###########################################
