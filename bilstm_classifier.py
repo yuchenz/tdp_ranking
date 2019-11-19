@@ -126,18 +126,18 @@ class Bilstm_Classifier:
         BERT_embd_list = []
 
         char_BERT_list = BERT_dict['features'][1:]
-        print('char_BERT_list len:', len(char_BERT_list))
+        #print('char_BERT_list len:', len(char_BERT_list))
         word_list = [word for snt in snt_list for word in snt]
-        print('word_list len:', len(word_list))
+        #print('word_list len:', len(word_list))
 
         index = 0       # char index in bert
         chars_over = 0  # number of characters we went over
         for word in word_list:
-            print('word in snt:', word)
+            #print('word in snt:', word)
 
             num_char = len(word)
             assert num_char > 0 
-            print(len(char_BERT_list), index, index+num_char)
+            #print(len(char_BERT_list), index, index+num_char)
 
             if chars_over == 0:
 
@@ -146,7 +146,7 @@ class Bilstm_Classifier:
                 chars_left = num_char
                 while chars_left > 0:
                     char_and_layers = char_BERT_list[index+i]
-                    print('char in BERT:', char_and_layers['token'])
+                    #print('char in BERT:', char_and_layers['token'])
                     c = char_and_layers['token']
                     c = c[2:] if c[0:2] == '##' else c
                     layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
@@ -167,7 +167,7 @@ class Bilstm_Classifier:
             elif chars_over > num_char:
                 char_embd_list = []
                 char_and_layers = char_BERT_list[index]
-                print('char in BERT:', char_and_layers['token'])
+                #print('char in BERT:', char_and_layers['token'])
                 c = char_and_layers['token']
                 c = c[2:] if c[0:2] == '##' else c
                 layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
@@ -182,7 +182,7 @@ class Bilstm_Classifier:
 
                 char_embd_list = []
                 char_and_layers = char_BERT_list[index]
-                print('char in BERT:', char_and_layers['token'])
+                #print('char in BERT:', char_and_layers['token'])
                 c = char_and_layers['token']
                 c = c[2:] if c[0:2] == '##' else c
                 layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
@@ -191,7 +191,7 @@ class Bilstm_Classifier:
                 chars_left -= num_char
                 while chars_left > 0:
                     char_and_layers = char_BERT_list[index+i]
-                    print('char in BERT:', char_and_layers['token'])
+                    #print('char in BERT:', char_and_layers['token'])
                     c = char_and_layers['token']
                     c = c[2:] if c[0:2] == '##' else c
                     layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
@@ -231,7 +231,7 @@ class Bilstm_Classifier:
         self.bi_lstm = [dy.concatenate([f, b, BERT]) for f, b, BERT in 
             zip(f_exps, reversed(b_exps), BERT_embeddings)]
 
-        print('bi_lstm_size = ', self.bi_lstm[0].dim())
+        #print('bi_lstm_size = ', self.bi_lstm[0].dim())
 
         self.W1 = dy.parameter(self.pW1)
         self.b1 = dy.parameter(self.pb1)
