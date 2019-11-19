@@ -130,36 +130,84 @@ class Bilstm_Classifier:
         word_list = [word for snt in snt_list for word in snt]
         print('word_list len:', len(word_list))
 
-        index = 0
+        index = 0       # char index in bert
+        chars_over = 0  # number of characters we went over
         for word in word_list:
             print('word in snt:', word)
 
             num_char = len(word)
             assert num_char > 0 
-            word_char_BERT_list = char_BERT_list[index:index+num_char]
-            print(len(char_BERT_list), index, index+num_char, len(word_char_BERT_list))
-            
-            char_embd_list = []
-            i = 0
-            chars_left = num_char
-            while chars_left > 0:
-                char_and_layers = char_BERT_list[index+i]
+            print(len(char_BERT_list), index, index+num_char)
+
+            if chars_over == 0:
+
+                char_embd_list = []
+                i = 0
+                chars_left = num_char
+                while chars_left > 0:
+                    char_and_layers = char_BERT_list[index+i]
+                    print('char in BERT:', char_and_layers['token'])
+                    c = char_and_layers['token']
+                    c = c[2:] if c[0:2] == '##' else c
+                    layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
+
+                    char_embd_list.append(dy.inputVector(layer_1['values']))
+                    i += 1
+                    chars_left -= len(c)
+
+                chars_over = -chars_left
+
+                if chars_over > 0:
+                    index += i - 1  # we went over, don't advance
+                else:
+                    index += i
+
+                BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list, d=1), d=1))
+
+            elif chars_over > num_char:
+                char_embd_list = []
+                char_and_layers = char_BERT_list[index]
                 print('char in BERT:', char_and_layers['token'])
                 c = char_and_layers['token']
                 c = c[2:] if c[0:2] == '##' else c
                 layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
+                BERT_embd_list.append(dy.inputVector(layer_1['values']))
 
+                chars_over -= num_char
+
+            else: # the case where chars_over <= num_char and chars_over > 0
+                char_embd_list = []
+                i = 0
+                chars_left = num_char
+
+                char_embd_list = []
+                char_and_layers = char_BERT_list[index]
+                print('char in BERT:', char_and_layers['token'])
+                c = char_and_layers['token']
+                c = c[2:] if c[0:2] == '##' else c
+                layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
                 char_embd_list.append(dy.inputVector(layer_1['values']))
-                i += 1
-                chars_left -= len(c)
 
-            index += i
-            #print('layer_1 dim = ', char_embd_list[0].dim())
-            #res1 = dy.concatenate(char_embd_list, d=1)
-            #print('res1 dim = ', res1.dim())
-            #res2 = dy.max_dim(res1, d=1)
-            #print('res2 dim = ', res2.dim())
-            BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list, d=1), d=1))
+                chars_left -= num_char
+                while chars_left > 0:
+                    char_and_layers = char_BERT_list[index+i]
+                    print('char in BERT:', char_and_layers['token'])
+                    c = char_and_layers['token']
+                    c = c[2:] if c[0:2] == '##' else c
+                    layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
+
+                    char_embd_list.append(dy.inputVector(layer_1['values']))
+                    i += 1
+                    chars_left -= len(c)
+
+                chars_over = -chars_left
+
+                if chars_over > 0:
+                    index += i - 1  # we went over, don't advance
+                else:
+                    index += i
+
+                BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list, d=1), d=1))
 
         return BERT_embd_list
 
