@@ -53,13 +53,15 @@ class Bilstm_Classifier:
 
             self.attention_w = self.model.add_parameters((1, size_lstm * 2 + self.BERT_size))
 
+            self.pBert_weights = self.model.add_parameters(4)
+
             self.vocab = vocab
             self.size_lstm = size_lstm
         else:
             self.embeddings, self.timex_event_label_embeddings, \
                 self.pW1, self.pb1, self.pW2, self.pb2, \
-                self.lstm_fwd, self.lstm_bwd, self.attention_w, self.vocab = \
-                None, None, None, None, None, None, None, None, None, None
+                self.lstm_fwd, self.lstm_bwd, self.attention_w, pBert_weights, self.vocab = \
+                None, None, None, None, None, None, None, None, None, None, None
 
     @classmethod
     def load_model(cls, model_file, vocab_file, timex_event_label_input):
@@ -67,7 +69,8 @@ class Bilstm_Classifier:
         classifier.embeddings, classifier.timex_event_label_embeddings, \
             classifier.pW1, classifier.pb1, classifier.pW2, \
             classifier.pb2, classifier.lstm_fwd, classifier.lstm_bwd,\
-            classifier.attention_w = \
+            classifier.attention_w ,\
+            classifier.pBert_weights = \
             classifier.model.load(model_file)
 
         classifier.size_edge_label = classifier.pb2.shape()[0]
@@ -124,6 +127,8 @@ class Bilstm_Classifier:
     def get_embeddings_BERT(self, snt_list, BERT_line):
         BERT_dict = json.loads(BERT_line)
 
+        self.bert_weights = dy.parameter(self.pBert_weights)
+
         BERT_embd_list = []
 
         char_BERT_list = BERT_dict['features'][1:]
@@ -151,8 +156,14 @@ class Bilstm_Classifier:
                     c = char_and_layers['token']
                     c = c[2:] if c[0:2] == '##' else c
                     layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
+                    layer_2 = list(filter((lambda x: x['index'] == -2), char_and_layers['layers']))[0]
+                    layer_3 = list(filter((lambda x: x['index'] == -3), char_and_layers['layers']))[0]
+                    layer_4 = list(filter((lambda x: x['index'] == -4), char_and_layers['layers']))[0]
 
-                    char_embd_list.append(dy.inputVector(layer_1['values']))
+                    char_embd_list.append(dy.inputVector(layer_1['values'])*self.bert_weights[0]+
+                                          dy.inputVector(layer_2['values'])*self.bert_weights[1]+
+                                          dy.inputVector(layer_3['values'])*self.bert_weights[2]+
+                                          dy.inputVector(layer_4['values'])*self.bert_weights[3])
                     i += 1
                     chars_left -= len(c)
 
@@ -163,7 +174,7 @@ class Bilstm_Classifier:
                 else:
                     index += i
 
-                BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list, d=1), d=1))
+                BERT_embd_list.append(dy.average(char_embd_list))
 
             elif chars_over > num_char:
                 char_embd_list = []
@@ -172,7 +183,14 @@ class Bilstm_Classifier:
                 c = char_and_layers['token']
                 c = c[2:] if c[0:2] == '##' else c
                 layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
-                BERT_embd_list.append(dy.inputVector(layer_1['values']))
+                layer_2 = list(filter((lambda x: x['index'] == -2), char_and_layers['layers']))[0]
+                layer_3 = list(filter((lambda x: x['index'] == -3), char_and_layers['layers']))[0]
+                layer_4 = list(filter((lambda x: x['index'] == -4), char_and_layers['layers']))[0]
+
+                BERT_embd_list.append(dy.inputVector(layer_1['values'])*self.bert_weights[0]+
+                                      dy.inputVector(layer_2['values'])*self.bert_weights[1]+
+                                      dy.inputVector(layer_3['values'])*self.bert_weights[2]+
+                                      dy.inputVector(layer_4['values'])*self.bert_weights[3])
 
                 chars_over -= num_char
 
@@ -187,7 +205,14 @@ class Bilstm_Classifier:
                 c = char_and_layers['token']
                 c = c[2:] if c[0:2] == '##' else c
                 layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
-                char_embd_list.append(dy.inputVector(layer_1['values']))
+                layer_2 = list(filter((lambda x: x['index'] == -2), char_and_layers['layers']))[0]
+                layer_3 = list(filter((lambda x: x['index'] == -3), char_and_layers['layers']))[0]
+                layer_4 = list(filter((lambda x: x['index'] == -4), char_and_layers['layers']))[0]
+
+                char_embd_list.append(dy.inputVector(layer_1['values'])*self.bert_weights[0]+
+                                      dy.inputVector(layer_2['values'])*self.bert_weights[1]+
+                                      dy.inputVector(layer_3['values'])*self.bert_weights[2]+
+                                      dy.inputVector(layer_4['values'])*self.bert_weights[3])
 
                 chars_left -= num_char
                 while chars_left > 0:
@@ -196,8 +221,15 @@ class Bilstm_Classifier:
                     c = char_and_layers['token']
                     c = c[2:] if c[0:2] == '##' else c
                     layer_1 = list(filter((lambda x: x['index'] == -1), char_and_layers['layers']))[0]
+                    layer_2 = list(filter((lambda x: x['index'] == -2), char_and_layers['layers']))[0]
+                    layer_3 = list(filter((lambda x: x['index'] == -3), char_and_layers['layers']))[0]
+                    layer_4 = list(filter((lambda x: x['index'] == -4), char_and_layers['layers']))[0]
 
-                    char_embd_list.append(dy.inputVector(layer_1['values']))
+                    char_embd_list.append(dy.inputVector(layer_1['values'])*self.bert_weights[0]+
+                                          dy.inputVector(layer_2['values'])*self.bert_weights[1]+
+                                          dy.inputVector(layer_3['values'])*self.bert_weights[2]+
+                                          dy.inputVector(layer_4['values'])*self.bert_weights[3])
+
                     i += 1
                     chars_left -= len(c)
 
@@ -208,7 +240,7 @@ class Bilstm_Classifier:
                 else:
                     index += i
 
-                BERT_embd_list.append(dy.max_dim(dy.concatenate(char_embd_list, d=1), d=1))
+                BERT_embd_list.append(dy.average(char_embd_list))
 
         return BERT_embd_list
 
@@ -294,7 +326,7 @@ class Bilstm_Classifier:
                     output_file,
                     [self.embeddings, self.timex_event_label_embeddings,
                         self.pW1, self.pb1, self.pW2, self.pb2,
-                        self.lstm_fwd, self.lstm_bwd, self.attention_w])
+                        self.lstm_fwd, self.lstm_bwd, self.attention_w, self.pBert_weights])
 
             min_dev_loss = min(min_dev_loss, dev_loss)
 
