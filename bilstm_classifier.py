@@ -28,6 +28,8 @@ class Bilstm_Classifier:
         else:
             self.label_vocab = LABEL_VOCAB_FULL
 
+        self.BERT_size = 768    # WARNING: IF YOU CHANGE THIS, ALSO CHANGE IN load_model
+
         if vocab != 0:
             self.embeddings = self.model.add_lookup_parameters(
                     (len(vocab), size_embed))
@@ -42,7 +44,6 @@ class Bilstm_Classifier:
                     1, size_embed + size_timex_event_label_embed,
                     size_lstm, self.model)
 
-            self.BERT_size = 768    # WARNING: IF YOU CHANGE THIS, ALSO CHANGE IN load_model
             self.pW1 = self.model.add_parameters(
                     (size_hidden, 6 * (2 * size_lstm + self.BERT_size) + 5 + 2))
             self.pb1 = self.model.add_parameters(size_hidden)
@@ -248,7 +249,7 @@ class Bilstm_Classifier:
         min_dev_loss = sys.maxsize
         for i in range(num_iter):
             training_data_with_BERT = list(zip(training_data, bert_train))
-            #random.shuffle(training_data_with_BERT)
+            random.shuffle(training_data_with_BERT)
             closs = 0.0
             for training_doc, BERT_line in training_data_with_BERT:
                 snt_list, training_example_list = training_doc
@@ -282,7 +283,7 @@ class Bilstm_Classifier:
             else:
                 dev_loss_inc_count = 0
             # if 3 consecutive iters have increasing dev loss, then break
-            if dev_loss_inc_count > 2:  
+            if dev_loss_inc_count > 10:  
                 break
             else:
                 pre_dev_loss = dev_loss

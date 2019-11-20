@@ -46,16 +46,16 @@ python -u train.py --train_file $train_file --dev_file $dev_file --model_file $m
 ##  parse and evaluate on training data  ##  
 ###########################################
 
-echo parsing training data ...
-if [ -f ${train_file}.parsed-tdt.$exp_id ]; 
-then
-    mv ${train_file}.parsed-tdt.$exp_id ~/.recycle
-fi
+#echo parsing training data ...
+#if [ -f ${train_file}.parsed-tdt.$exp_id ]; 
+#then
+#    mv ${train_file}.parsed-tdt.$exp_id ~/.recycle
+#fi
 
-python parse.py --test_file $train_file --model_file $model_file --vocab_file $vocab_file --parsed_file ${train_file}.parsed-tdt.$exp_id --classifier bi_lstm $labeled
+#python parse.py --test_file $train_file --model_file $model_file --vocab_file $vocab_file --parsed_file ${train_file}.parsed-tdt.$exp_id --classifier bi_lstm $labeled
 
-echo eval training data ...
-python eval.py --gold_file $train_file --parsed_file ${train_file}.parsed-tdt.$exp_id $labeled 
+#echo eval training data ...
+#python eval.py --gold_file $train_file --parsed_file ${train_file}.parsed-tdt.$exp_id $labeled 
 
 
 ###########################################
@@ -73,7 +73,6 @@ python parse.py --test_file $dev_file --model_file $model_file --vocab_file $voc
 echo eval dev data ...
 python eval.py --gold_file $dev_file --parsed_file ${dev_file}.parsed-tdt.$exp_id $labeled 
 
-END
 
 ############################################
 ##  parse and evaluate on test_test data  ## 
