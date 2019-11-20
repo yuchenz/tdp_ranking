@@ -145,6 +145,14 @@ class Bilstm_Classifier:
             assert num_char > 0 
             #print(len(char_BERT_list), index, index+num_char)
 
+            char_and_layers = char_BERT_list[index]
+            c = char_and_layers['token']
+            c = c[2:] if c[0:2] == '##' else c
+            if c == '[UNK]' or c == '[CLS]' or c == '[SEP]':
+                my_char_len = 1
+            else:
+                my_char_len = len(c)
+
             if chars_over == 0:
 
                 char_embd_list = []
@@ -165,7 +173,10 @@ class Bilstm_Classifier:
                                           dy.inputVector(layer_3['values'])*self.bert_weights[2]+
                                           dy.inputVector(layer_4['values'])*self.bert_weights[3])
                     i += 1
-                    chars_left -= len(c)
+                    if c == '[UNK]' or c == '[CLS]' or c == '[SEP]':
+                        chars_left -= 1
+                    else:
+                        chars_left -= len(c)
 
                 chars_over = -chars_left
 
@@ -176,7 +187,7 @@ class Bilstm_Classifier:
 
                 BERT_embd_list.append(dy.average(char_embd_list))
 
-            elif chars_over > num_char:
+            elif chars_over > my_char_len:
                 char_embd_list = []
                 char_and_layers = char_BERT_list[index]
                 #print('char in BERT:', char_and_layers['token'])
@@ -193,6 +204,7 @@ class Bilstm_Classifier:
                                       dy.inputVector(layer_4['values'])*self.bert_weights[3])
 
                 chars_over -= num_char
+                index += 1
 
             else: # the case where chars_over <= num_char and chars_over > 0
                 char_embd_list = []
@@ -213,6 +225,7 @@ class Bilstm_Classifier:
                                       dy.inputVector(layer_2['values'])*self.bert_weights[1]+
                                       dy.inputVector(layer_3['values'])*self.bert_weights[2]+
                                       dy.inputVector(layer_4['values'])*self.bert_weights[3])
+                i += 1
 
                 chars_left -= num_char
                 while chars_left > 0:
@@ -231,7 +244,10 @@ class Bilstm_Classifier:
                                           dy.inputVector(layer_4['values'])*self.bert_weights[3])
 
                     i += 1
-                    chars_left -= len(c)
+                    if c == '[UNK]' or c == '[CLS]' or c == '[SEP]':
+                        chars_left -= 1
+                    else:
+                        chars_left -= len(c)
 
                 chars_over = -chars_left
 
@@ -274,7 +290,7 @@ class Bilstm_Classifier:
     def online_train(self, training_data, dev_data, output_file, vocab_file, labeled,
             bert_train, bert_dev, num_iter=1000):
 
-        trainer = dy.AdamTrainer(self.model, 0.00001, 0.9, 0.999, 1e-8)
+        trainer = dy.AdamTrainer(self.model, 0.00002, 0.9, 0.999, 1e-8)
 
         dev_loss_inc_count = 0
         pre_dev_loss = 0
