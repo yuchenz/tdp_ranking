@@ -242,7 +242,7 @@ class Bilstm_Classifier:
     def online_train(self, training_data, dev_data, output_file, vocab_file, labeled,
             bert_train, bert_dev, num_iter=1000):
 
-        trainer = dy.AdamTrainer(self.model)
+        trainer = dy.AdamTrainer(self.model, 0.00001, 0.9, 0.999, 1e-8)
 
         dev_loss_inc_count = 0
         pre_dev_loss = 0
